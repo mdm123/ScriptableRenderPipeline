@@ -153,14 +153,14 @@ namespace UnityEngine.Rendering.Universal
         /// <summary>
         /// Removes the entry at index.
         /// </summary>
-        public bool RemoveAtIndex(int index)
+        public bool RemoveEntryAtIndex(int index)
         {
             if (index >= Count())
             {
                 throw new ArgumentException($"{index} is out of bounds. There are only {Count()} entries.");
             }
 
-            RemoveEntryAtIndex(index);
+            RemoveAtIndex(index);
             return true;
         }
 
@@ -195,7 +195,7 @@ namespace UnityEngine.Rendering.Universal
             }
 
             CameraStackEntry entry = GetEntry(fromIndex);
-            RemoveEntryAtIndex(fromIndex, true);
+            RemoveAtIndex(fromIndex, true);
             AddEntryAtIndex(entry, toIndex);
 
             return true;
@@ -282,7 +282,7 @@ namespace UnityEngine.Rendering.Universal
             {
                 if (m_Entries[i].entryType == EntryType.PostProcessing)
                 {
-                    success &= RemoveAtIndex(i);
+                    success &= RemoveEntryAtIndex(i);
                 }
             }
 
@@ -351,7 +351,7 @@ namespace UnityEngine.Rendering.Universal
             m_Entries.Remove(entry);
         }
 
-        internal void RemoveEntryAtIndex(int index, bool force = false)
+        internal void RemoveAtIndex(int index, bool force = false)
         {
             // Can not remove post processing entry.
             // This might change in the future.
