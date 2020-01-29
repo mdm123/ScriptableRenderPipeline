@@ -86,7 +86,7 @@ namespace UnityEngine.Rendering.Universal
             if (IsOverlayCamera(camera))
             {
                 CameraStackEntry cameraEntry = new CameraStackEntry { camera = camera, entryType = EntryType.Camera };
-                AddEntryAtIndex(cameraEntry, index == -1 ? m_Entries.Count - 1: index);
+                AddEntryAtIndex(cameraEntry, index == -1 ? m_Entries.Count: index);
 
                 return true;
             }

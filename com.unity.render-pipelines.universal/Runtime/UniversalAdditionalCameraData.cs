@@ -274,7 +274,7 @@ namespace UnityEngine.Rendering.Universal
         public CameraStack cameraStack
         {
             get => m_CameraStack;
-                }
+        }
 
         /// <summary>
         /// Returns the camera stack. Only valid for Base cameras.
