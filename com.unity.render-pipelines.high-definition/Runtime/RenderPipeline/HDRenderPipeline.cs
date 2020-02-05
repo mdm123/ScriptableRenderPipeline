@@ -342,7 +342,6 @@ namespace UnityEngine.Rendering.HighDefinition
             //So in this case, the reloader would fail and the resources cannot be validated. So skip validation here.
             //The HDRenderPipeline will be reconstructed in a few frame which will fix this issue.
             if (HDRenderPipeline.defaultAsset.renderPipelineResources == null
-                || HDRenderPipeline.defaultAsset.renderPipelineEditorResources == null
                 || (m_RayTracingSupported && HDRenderPipeline.defaultAsset.renderPipelineRayTracingResources == null))
                 return;
             else
@@ -508,10 +507,16 @@ namespace UnityEngine.Rendering.HighDefinition
                 HDRenderPipeline.defaultAsset.renderPipelineRayTracingResources = null;
             }
 
+
+            // TODO Handle this...
+            /*
             if (HDRenderPipeline.defaultAsset.renderPipelineEditorResources == null)
                 HDRenderPipeline.defaultAsset.renderPipelineEditorResources
                     = UnityEditor.AssetDatabase.LoadAssetAtPath<HDRenderPipelineEditorResources>(HDUtils.GetHDRenderPipelinePath() + "Editor/RenderPipelineResources/HDRenderPipelineEditorResources.asset");
             ResourceReloader.ReloadAllNullIn(HDRenderPipeline.defaultAsset.renderPipelineEditorResources, HDUtils.GetHDRenderPipelinePath());
+            */
+            ////////////////////////
+
 
             // Upgrade the resources (re-import every references in RenderPipelineResources) if the resource version mismatches
             // It's done here because we know every HDRP assets have been imported before

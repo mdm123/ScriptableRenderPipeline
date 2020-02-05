@@ -21,6 +21,8 @@ namespace UnityEditor.Rendering.HighDefinition
         public SerializedFrameSettings defaultBakedOrCustomReflectionFrameSettings;
         public SerializedFrameSettings defaultRealtimeReflectionFrameSettings;
 
+        // TODO : should be unused after refactor, remove.
+        /*
         //RenderPipelineResources not always exist and thus cannot be serialized normally.
         public bool editorResourceHasMultipleDifferentValues
         {
@@ -44,6 +46,7 @@ namespace UnityEditor.Rendering.HighDefinition
             for (int index = 0; index < serializedObject.targetObjects.Length; ++index)
                 (serializedObject.targetObjects[index] as HDRenderPipelineAsset).renderPipelineEditorResources = value;
         }
+        */
 
         public SerializedHDRenderPipelineAsset(SerializedObject serializedObject)
         {

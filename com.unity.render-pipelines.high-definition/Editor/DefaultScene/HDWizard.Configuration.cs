@@ -384,8 +384,7 @@ namespace UnityEditor.Rendering.HighDefinition
         }
 
         bool IsHdrpAssetEditorResourcesCorrect()
-            => IsHdrpAssetUsedCorrect()
-            && HDRenderPipeline.defaultAsset.renderPipelineEditorResources != null;
+            => IsHdrpAssetUsedCorrect();
         void FixHdrpAssetEditorResources(bool fromAsyncUnused)
         {
             if (!IsHdrpAssetUsedCorrect())
@@ -395,9 +394,13 @@ namespace UnityEditor.Rendering.HighDefinition
             if (hdrpAsset == null)
                 return;
 
+
+            // TODO : handle this
+            /*
             hdrpAsset.renderPipelineEditorResources
                 = AssetDatabase.LoadAssetAtPath<HDRenderPipelineEditorResources>(HDUtils.GetHDRenderPipelinePath() + "Editor/RenderPipelineResources/HDRenderPipelineEditorResources.asset");
             ResourceReloader.ReloadAllNullIn(HDRenderPipeline.defaultAsset.renderPipelineEditorResources, HDUtils.GetHDRenderPipelinePath());
+            */
         }
 
         bool IsSRPBatcherCorrect()

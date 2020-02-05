@@ -1,4 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEditor;
+using UnityEditor.Experimental;
+using UnityEditorInternal;
 using UnityEngine.Scripting.APIUpdating;
 
 namespace UnityEngine.Rendering.LWRP
@@ -9,73 +14,143 @@ namespace UnityEngine.Rendering.LWRP
     }
 }
 
-
 namespace UnityEngine.Rendering.Universal
 {
     [MovedFrom("UnityEngine.Rendering.LWRP")] public class UniversalRenderPipelineEditorResources : ScriptableObject
     {
-        [Serializable, ReloadGroup]
+        public static readonly string k_SettingsFromPackagePath = "Packages/com.unity.render-pipelines.universal/Runtime/Data/UniversalRenderPipelineEditorResources.asset";
+        public static readonly string k_SettingsPath = "ProjectSettings/UniversalRenderPipelineEditorResources.asset";
+
+        [Serializable]
         public sealed class ShaderResources
         {
-            [Reload("Shaders/Autodesk Interactive/Autodesk Interactive.shadergraph")]
             public Shader autodeskInteractivePS;
 
-            [Reload("Shaders/Autodesk Interactive/Autodesk Interactive Transparent.shadergraph")]
             public Shader autodeskInteractiveTransparentPS;
 
-            [Reload("Shaders/Autodesk Interactive/Autodesk Interactive Masked.shadergraph")]
             public Shader autodeskInteractiveMaskedPS;
 
-            [Reload("Shaders/Terrain/TerrainDetailLit.shader")]
             public Shader terrainDetailLitPS;
 
-            [Reload("Shaders/Terrain/WavingGrass.shader")]
             public Shader terrainDetailGrassPS;
 
-            [Reload("Shaders/Terrain/WavingGrassBillboard.shader")]
             public Shader terrainDetailGrassBillboardPS;
 
-            [Reload("Shaders/Nature/SpeedTree7.shader")]
             public Shader defaultSpeedTree7PS;
 
-            [Reload("Shaders/Nature/SpeedTree8.shader")]
             public Shader defaultSpeedTree8PS;
         }
 
-        [Serializable, ReloadGroup]
+        [Serializable]
         public sealed class MaterialResources
         {
-            [Reload("Runtime/Materials/Lit.mat")]
             public Material lit;
 
-            [Reload("Runtime/Materials/ParticlesLit.mat")]
             public Material particleLit;
 
-            [Reload("Runtime/Materials/TerrainLit.mat")]
             public Material terrainLit;
         }
 
         public ShaderResources shaders;
         public MaterialResources materials;
-    }
 
-#if UNITY_EDITOR
-    [UnityEditor.CustomEditor(typeof(UniversalRenderPipelineEditorResources), true)]
-    class UniversalRenderPipelineEditorResourcesEditor : UnityEditor.Editor
-    {
-        public override void OnInspectorGUI()
+
+        private static UniversalRenderPipelineEditorResources Instance;
+        private static SerializedObject instanceSerializedObject;
+
+        internal static SerializedObject getSerializedObject()
         {
-            DrawDefaultInspector();
-
-            // Add a "Reload All" button in inspector when we are in developer's mode
-            if (UnityEditor.EditorPrefs.GetBool("DeveloperMode") && GUILayout.Button("Reload All"))
+            if (instanceSerializedObject == null)
             {
-                var resources = target as UniversalRenderPipelineEditorResources;
-                resources.materials = null;
-                resources.shaders = null;
-                ResourceReloader.ReloadAllNullIn(target, UniversalRenderPipelineAsset.packagePath);
+                if (Instance == null)
+                    Instance = GetInstance();
+
+                instanceSerializedObject = new SerializedObject(Instance);
             }
+
+            return instanceSerializedObject;
+        }
+
+        internal static UniversalRenderPipelineEditorResources GetInstance()
+        {
+            if (Instance != null)
+                return Instance;
+
+            var objects = InternalEditorUtility.LoadSerializedFileAndForget(k_SettingsPath);
+            if (objects.Length>0)
+            {
+                Instance = objects.First() as UniversalRenderPipelineEditorResources;
+            }
+            else
+            {
+                // UniversalRenderPipelineEditorResources was deleted or moved, regenerate it from package.
+                objects = InternalEditorUtility.LoadSerializedFileAndForget(k_SettingsFromPackagePath);
+                if (objects.Length > 0)
+                {
+                    Instance = objects.First() as UniversalRenderPipelineEditorResources;
+                    SaveSettings();
+                }
+                else
+                {
+                    //Was removed from package or other error, generate one from scratch ??
+                }
+
+                // custom dependencies should also be updated here.
+            }
+            
+            return Instance;
+        }
+
+        public static void SaveSettings()
+        {
+            InternalEditorUtility.SaveToSerializedFileAndForget(new Object[] { Instance }, k_SettingsPath, true);
         }
     }
-#endif
+
+    static class UniversalRenderPipelineEditorResourcesIMGUIRegister
+    {
+        private static readonly string defaultMaterialAssetImportDependency = "DefaultMaterialAssetImportDependency";
+
+        [SettingsProvider]
+        public static SettingsProvider CreateRenderPipelineEditorResourcesProvider()
+        {
+            var provider = new SettingsProvider("Project/Universal Render Pipeline", SettingsScope.Project)
+            {
+                label = "Universal Render Pipeline Editor Resources",
+                // Create the SettingsProvider and initialize its drawing (IMGUI) function in place:
+                guiHandler = (searchContext) =>
+                {
+                
+                    var settings = UniversalRenderPipelineEditorResources.getSerializedObject();
+                    EditorGUI.BeginChangeCheck();
+                    var litMaterialProp = settings.FindProperty("materials.lit");
+                    EditorGUILayout.PropertyField(litMaterialProp);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        AssetDatabase.TryGetGUIDAndLocalFileIdentifier(litMaterialProp.objectReferenceValue,out var guid,out long fileID);
+                        var hash = Hash128.Compute(guid + "_" + fileID);
+                        AssetDatabaseExperimental.RegisterCustomDependency(defaultMaterialAssetImportDependency, hash);
+                        AssetDatabase.Refresh();
+                    }
+
+                    EditorGUILayout.PropertyField(settings.FindProperty("materials.particleLit"));
+                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.defaultSpeedTree7PS"));
+                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.defaultSpeedTree8PS"));
+                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.autodeskInteractivePS"));
+                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.autodeskInteractiveTransparentPS"));
+                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.autodeskInteractiveMaskedPS"));
+
+                    if (settings.hasModifiedProperties)
+                    {
+                        settings.ApplyModifiedProperties();
+                        UniversalRenderPipelineEditorResources.SaveSettings();
+                    }
+                
+                }
+            };
+
+            return provider;
+        }
+    }
 }
+

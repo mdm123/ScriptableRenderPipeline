@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using UnityEditorInternal;
 using UnityEngine.Serialization;
 using Utilities;
 
@@ -79,23 +81,7 @@ namespace UnityEngine.Rendering.HighDefinition
             set => m_DefaultLookDevProfile = value;
         }
 
-        HDRenderPipelineEditorResources m_RenderPipelineEditorResources;
-
-        internal HDRenderPipelineEditorResources renderPipelineEditorResources
-        {
-            get
-            {
-                //there is no clean way to load editor resources without having it serialized
-                // - impossible to load them at deserialization
-                // - constructor only called at asset creation
-                // - cannot rely on OnEnable
-                //thus fallback with lazy init for them
-                if (m_RenderPipelineEditorResources == null || m_RenderPipelineEditorResources.Equals(null))
-                    m_RenderPipelineEditorResources = UnityEditor.AssetDatabase.LoadAssetAtPath<HDRenderPipelineEditorResources>(HDUtils.GetHDRenderPipelinePath() + "Editor/RenderPipelineResources/HDRenderPipelineEditorResources.asset");
-                return m_RenderPipelineEditorResources;
-            }
-            set { m_RenderPipelineEditorResources = value; }
-        }
+        internal HDRenderPipelineEditorResources renderPipelineEditorResources => HDRenderPipelineEditorResources.GetInstance();
 #endif
 
         // To be able to turn on/off FrameSettings properties at runtime for debugging purpose without affecting the original one
@@ -256,50 +242,50 @@ namespace UnityEngine.Rendering.HighDefinition
 #if UNITY_EDITOR
         /// <summary>HDRP default material.</summary>
         public override Material defaultMaterial
-            => renderPipelineEditorResources?.materials.defaultDiffuseMat;
+            => renderPipelineEditorResources.materials.defaultDiffuseMat;
 
         // call to GetAutodeskInteractiveShaderXXX are only from within editor
         /// <summary>HDRP default autodesk interactive shader.</summary>
         public override Shader autodeskInteractiveShader
-            => renderPipelineEditorResources?.shaderGraphs.autodeskInteractive;
+            => renderPipelineEditorResources.shaderGraphs.autodeskInteractive;
 
         /// <summary>HDRP default autodesk interactive transparent shader.</summary>
         public override Shader autodeskInteractiveTransparentShader
-            => renderPipelineEditorResources?.shaderGraphs.autodeskInteractiveTransparent;
+            => renderPipelineEditorResources.shaderGraphs.autodeskInteractiveTransparent;
 
         /// <summary>HDRP default autodesk interactive masked shader.</summary>
         public override Shader autodeskInteractiveMaskedShader
-            => renderPipelineEditorResources?.shaderGraphs.autodeskInteractiveMasked;
+            => renderPipelineEditorResources.shaderGraphs.autodeskInteractiveMasked;
 
         /// <summary>HDRP default terrain detail lit shader.</summary>
         public override Shader terrainDetailLitShader
-            => renderPipelineEditorResources?.shaders.terrainDetailLitShader;
+            => renderPipelineEditorResources.shaders.terrainDetailLitShader;
 
         /// <summary>HDRP default terrain detail grass shader.</summary>
         public override Shader terrainDetailGrassShader
-            => renderPipelineEditorResources?.shaders.terrainDetailGrassShader;
+            => renderPipelineEditorResources.shaders.terrainDetailGrassShader;
 
         /// <summary>HDRP default terrain detail grass billboard shader.</summary>
         public override Shader terrainDetailGrassBillboardShader
-            => renderPipelineEditorResources?.shaders.terrainDetailGrassBillboardShader;
+            => renderPipelineEditorResources.shaders.terrainDetailGrassBillboardShader;
 
         // Note: This function is HD specific
         /// <summary>HDRP default Decal material.</summary>
         public Material GetDefaultDecalMaterial()
-            => renderPipelineEditorResources?.materials.defaultDecalMat;
+            => renderPipelineEditorResources.materials.defaultDecalMat;
 
         // Note: This function is HD specific
         /// <summary>HDRP default mirror material.</summary>
         public Material GetDefaultMirrorMaterial()
-            => renderPipelineEditorResources?.materials.defaultMirrorMat;
+            => renderPipelineEditorResources.materials.defaultMirrorMat;
 
         /// <summary>HDRP default particles material.</summary>
         public override Material defaultParticleMaterial
-            => renderPipelineEditorResources?.materials.defaultParticleMat;
+            => renderPipelineEditorResources.materials.defaultParticleMat;
 
         /// <summary>HDRP default terrain material.</summary>
         public override Material defaultTerrainMaterial
-            => renderPipelineEditorResources?.materials.defaultTerrainMat;
+            => renderPipelineEditorResources.materials.defaultTerrainMat;
 
         // Array structure that allow us to manipulate the set of defines that the HD render pipeline needs
         List<string> defineArray = new List<string>();

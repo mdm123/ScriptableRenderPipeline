@@ -4,8 +4,10 @@ using UnityEngine.Scripting.APIUpdating;
 using UnityEditor;
 using UnityEditor.ProjectWindowCallback;
 using System.IO;
+using UnityEditorInternal;
 #endif
 using System.ComponentModel;
+using System.Linq;
 
 namespace UnityEngine.Rendering.LWRP
 {
@@ -188,7 +190,7 @@ namespace UnityEngine.Rendering.Universal
             else
                 instance.m_RendererDataList[0] = CreateInstance<ForwardRendererData>();
             // Initialize default Renderer
-            instance.m_EditorResourcesAsset = LoadResourceFile<UniversalRenderPipelineEditorResources>();
+            
             return instance;
         }
 
@@ -245,41 +247,8 @@ namespace UnityEngine.Rendering.Universal
             AssetDatabase.CreateAsset(instance, string.Format("Assets/{0}.asset", typeof(UniversalRenderPipelineEditorResources).Name));
         }
 
-        static T LoadResourceFile<T>() where T : ScriptableObject
-        {
-            T resourceAsset = null;
-            var guids = AssetDatabase.FindAssets(typeof(T).Name + " t:scriptableobject", new[] { "Assets" });
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                resourceAsset = AssetDatabase.LoadAssetAtPath<T>(path);
-                if (resourceAsset != null)
-                    break;
-            }
-
-            // There's currently an issue that prevents FindAssets from find resources withing the package folder.
-            if (resourceAsset == null)
-            {
-                string path = packagePath + "/Runtime/Data/" + typeof(T).Name + ".asset";
-                resourceAsset = AssetDatabase.LoadAssetAtPath<T>(path);
-            }
-
-            // Validate the resource file
-            ResourceReloader.TryReloadAllNullIn(resourceAsset, packagePath);
-
-            return resourceAsset;
-        }
-
-        UniversalRenderPipelineEditorResources editorResources
-        {
-            get
-            {
-                if (m_EditorResourcesAsset == null)
-                    m_EditorResourcesAsset = LoadResourceFile<UniversalRenderPipelineEditorResources>();
-
-                return m_EditorResourcesAsset;
-            }
-        }
+      
+        UniversalRenderPipelineEditorResources editorResources => UniversalRenderPipelineEditorResources.GetInstance();
 #endif
 
         public ScriptableRendererData LoadBuiltinRendererData(RendererType type = RendererType.ForwardRenderer)
@@ -713,6 +682,9 @@ namespace UnityEngine.Rendering.Universal
                 if (asset.m_RendererType == RendererType.ForwardRenderer)
                 {
                     var data = AssetDatabase.LoadAssetAtPath<ForwardRendererData>("Assets/ForwardRenderer.asset");
+                    if (data==null)
+                        data = InternalEditorUtility.LoadSerializedFileAndForget("Assets/ForwardRenderer.asset").First() as ForwardRendererData;
+
                     if (data)
                     {
                         asset.m_RendererDataList[0] = data;
