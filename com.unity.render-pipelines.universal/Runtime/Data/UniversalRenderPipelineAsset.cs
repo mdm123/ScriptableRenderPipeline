@@ -239,15 +239,6 @@ namespace UnityEngine.Rendering.Universal
             }
         }
 
-        //[MenuItem("Assets/Create/Rendering/Universal Pipeline Editor Resources", priority = CoreUtils.assetCreateMenuPriority1)]
-        static void CreateUniversalPipelineEditorResources()
-        {
-            var instance = CreateInstance<UniversalRenderPipelineEditorResources>();
-            ResourceReloader.ReloadAllNullIn(instance, packagePath);
-            AssetDatabase.CreateAsset(instance, string.Format("Assets/{0}.asset", typeof(UniversalRenderPipelineEditorResources).Name));
-        }
-
-      
         UniversalRenderPipelineEditorResources editorResources => UniversalRenderPipelineEditorResources.GetInstance();
 #endif
 

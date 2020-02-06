@@ -121,24 +121,50 @@ namespace UnityEngine.Rendering.HighDefinition
                     //Was removed from package or other error, generate one from scratch ??
                 }
 
-                // custom dependencies should also be updated here.
+                UpdateImportDependency(RenderPipelineAsset.DefaultMaterialImportDependency, _instance.materials.defaultDiffuseMat);
+                // No SpeedTree shader in HDRP ?
+                //UpdateImportDependency(RenderPipelineAsset.SpeedTree7ShaderImportDependency, _instance.shaders.defaultSpeedTree7PS);
+                //UpdateImportDependency(RenderPipelineAsset.SpeedTree8ShaderImportDependency, _instance.shaders.defaultSpeedTree8PS);
+                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency, _instance.shaderGraphs.autodeskInteractive);
+                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency, _instance.shaderGraphs.autodeskInteractiveMasked);
+                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency, _instance.shaderGraphs.autodeskInteractiveTransparent);
             }
 
             return _instance;
         }
 
-        public static void SaveSettings()
+        internal static void SaveSettings()
         {
             InternalEditorUtility.SaveToSerializedFileAndForget(new Object[] { _instance }, k_SettingsPath, true);
         }
+
+        internal static void UpdateImportDependency(string dependencyKey,Object obj)
+        {
+            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out var guid, out long fileID))
+            {
+                var hash = Hash128.Compute(guid + "_" + fileID);
+                AssetDatabaseExperimental.RegisterCustomDependency(dependencyKey, hash);
+                AssetDatabase.Refresh();
+            }
+        }
     }
+
+    
 
     static class HDRenderPipelineEditorResourcesIMGUIRegister
     {
-        private static readonly string defaultMaterialAssetImportDependency = "DefaultMaterialAssetImportDependency";
+        private static void DrawObjectPropertyWithImportDependency(SerializedProperty property, string dependencyKey)
+        {
+            // TODO : handle ObjectSelector events to only apply changes when the ObjectSelector closes.
+            // Also add alert popup : changing this value will trigger a reimport of some assets, may take some time..
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(property);
+            if (EditorGUI.EndChangeCheck())
+                HDRenderPipelineEditorResources.UpdateImportDependency(dependencyKey, property.objectReferenceValue);
+        }
 
         [SettingsProvider]
-        public static SettingsProvider CreateRenderPipelineEditorResourcesProvider()
+        internal static SettingsProvider CreateRenderPipelineEditorResourcesProvider()
         {
             var provider = new SettingsProvider("Project/HDRP", SettingsScope.Project)
             {
@@ -146,37 +172,23 @@ namespace UnityEngine.Rendering.HighDefinition
                 // Create the SettingsProvider and initialize its drawing (IMGUI) function in place:
                 guiHandler = (searchContext) =>
                 {
-
                     var settings = HDRenderPipelineEditorResources.getSerializedObject();
-                    
-                    var diffuseMaterialProp = settings.FindProperty("materials.defaultDiffuseMat");
-                    EditorGUI.BeginChangeCheck();
-                    EditorGUILayout.PropertyField(diffuseMaterialProp);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        settings.ApplyModifiedProperties();
-                        HDRenderPipelineEditorResources.SaveSettings();
-                        if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(diffuseMaterialProp.objectReferenceValue, out var guid, out long fileID))
-                        {
-                            var hash = Hash128.Compute(guid + "_" + fileID);
-                            AssetDatabaseExperimental.RegisterCustomDependency(defaultMaterialAssetImportDependency, hash);
-                            AssetDatabase.Refresh();
-                        }
-                    }
+
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.defaultDiffuseMat"), RenderPipelineAsset.DefaultMaterialImportDependency);
 
                     EditorGUILayout.PropertyField(settings.FindProperty("materials.defaultParticleMat"));
-                    EditorGUILayout.PropertyField(settings.FindProperty("shaderGraphs.autodeskInteractive"));
-                    EditorGUILayout.PropertyField(settings.FindProperty("shaderGraphs.autodeskInteractiveTransparent"));
-                    EditorGUILayout.PropertyField(settings.FindProperty("shaderGraphs.autodeskInteractiveMasked"));
+
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.autodeskInteractive"), RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.autodeskInteractiveTransparent"), RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.autodeskInteractiveMasked"), RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency);
                     // And so on...
 
-                    /*
                     if (settings.hasModifiedProperties)
                     {
                         settings.ApplyModifiedProperties();
                         HDRenderPipelineEditorResources.SaveSettings();
                     }
-                    */
+                    
                 }
             };
 

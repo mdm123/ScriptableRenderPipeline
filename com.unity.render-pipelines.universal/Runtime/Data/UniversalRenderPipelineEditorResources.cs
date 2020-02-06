@@ -95,50 +95,66 @@ namespace UnityEngine.Rendering.Universal
                     //Was removed from package or other error, generate one from scratch ??
                 }
 
-                // custom dependencies should also be updated here.
+                UpdateImportDependency(RenderPipelineAsset.DefaultMaterialImportDependency, Instance.materials.lit);
+                UpdateImportDependency(RenderPipelineAsset.SpeedTree7ShaderImportDependency, Instance.shaders.defaultSpeedTree7PS);
+                UpdateImportDependency(RenderPipelineAsset.SpeedTree8ShaderImportDependency, Instance.shaders.defaultSpeedTree8PS);
+                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency, Instance.shaders.autodeskInteractivePS);
+                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency, Instance.shaders.autodeskInteractiveMaskedPS);
+                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency, Instance.shaders.autodeskInteractiveTransparentPS);
             }
             
             return Instance;
         }
 
-        public static void SaveSettings()
+        internal static void SaveSettings()
         {
             InternalEditorUtility.SaveToSerializedFileAndForget(new Object[] { Instance }, k_SettingsPath, true);
+        }
+
+        internal static void UpdateImportDependency(string dependencyKey, Object obj)
+        {
+            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(obj, out var guid, out long fileID))
+            {
+                var hash = Hash128.Compute(guid + "_" + fileID);
+                AssetDatabaseExperimental.RegisterCustomDependency(dependencyKey, hash);
+                AssetDatabase.Refresh();
+            }
         }
     }
 
     static class UniversalRenderPipelineEditorResourcesIMGUIRegister
     {
-        private static readonly string defaultMaterialAssetImportDependency = "DefaultMaterialAssetImportDependency";
+        private static void DrawObjectPropertyWithImportDependency(SerializedProperty property, string dependencyKey)
+        {
+            // TODO : handle ObjectSelector events to only apply changes when the ObjectSelector closes.
+            // Also add alert popup : changing this value will trigger a reimport of some assets, may take some time..
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(property);
+            if (EditorGUI.EndChangeCheck())
+                UniversalRenderPipelineEditorResources.UpdateImportDependency(dependencyKey, property.objectReferenceValue);
+        }
+
 
         [SettingsProvider]
         public static SettingsProvider CreateRenderPipelineEditorResourcesProvider()
         {
             var provider = new SettingsProvider("Project/Universal Render Pipeline", SettingsScope.Project)
             {
-                label = "Universal Render Pipeline Editor Resources",
+                label = "URP Editor Resources",
                 // Create the SettingsProvider and initialize its drawing (IMGUI) function in place:
                 guiHandler = (searchContext) =>
                 {
-                
                     var settings = UniversalRenderPipelineEditorResources.getSerializedObject();
-                    EditorGUI.BeginChangeCheck();
-                    var litMaterialProp = settings.FindProperty("materials.lit");
-                    EditorGUILayout.PropertyField(litMaterialProp);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        AssetDatabase.TryGetGUIDAndLocalFileIdentifier(litMaterialProp.objectReferenceValue,out var guid,out long fileID);
-                        var hash = Hash128.Compute(guid + "_" + fileID);
-                        AssetDatabaseExperimental.RegisterCustomDependency(defaultMaterialAssetImportDependency, hash);
-                        AssetDatabase.Refresh();
-                    }
 
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.lit"), RenderPipelineAsset.DefaultMaterialImportDependency);
                     EditorGUILayout.PropertyField(settings.FindProperty("materials.particleLit"));
-                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.defaultSpeedTree7PS"));
-                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.defaultSpeedTree8PS"));
-                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.autodeskInteractivePS"));
-                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.autodeskInteractiveTransparentPS"));
-                    EditorGUILayout.PropertyField(settings.FindProperty("shaders.autodeskInteractiveMaskedPS"));
+
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.defaultSpeedTree7PS"), RenderPipelineAsset.SpeedTree7ShaderImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.defaultSpeedTree8PS"), RenderPipelineAsset.SpeedTree8ShaderImportDependency);
+
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractivePS"), RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractiveTransparentPS"), RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractiveMaskedPS"), RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency);
 
                     if (settings.hasModifiedProperties)
                     {

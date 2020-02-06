@@ -508,16 +508,6 @@ namespace UnityEngine.Rendering.HighDefinition
             }
 
 
-            // TODO Handle this...
-            /*
-            if (HDRenderPipeline.defaultAsset.renderPipelineEditorResources == null)
-                HDRenderPipeline.defaultAsset.renderPipelineEditorResources
-                    = UnityEditor.AssetDatabase.LoadAssetAtPath<HDRenderPipelineEditorResources>(HDUtils.GetHDRenderPipelinePath() + "Editor/RenderPipelineResources/HDRenderPipelineEditorResources.asset");
-            ResourceReloader.ReloadAllNullIn(HDRenderPipeline.defaultAsset.renderPipelineEditorResources, HDUtils.GetHDRenderPipelinePath());
-            */
-            ////////////////////////
-
-
             // Upgrade the resources (re-import every references in RenderPipelineResources) if the resource version mismatches
             // It's done here because we know every HDRP assets have been imported before
             HDRenderPipeline.defaultAsset.renderPipelineResources?.UpgradeIfNeeded();

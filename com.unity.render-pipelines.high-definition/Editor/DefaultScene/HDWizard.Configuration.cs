@@ -389,18 +389,6 @@ namespace UnityEditor.Rendering.HighDefinition
         {
             if (!IsHdrpAssetUsedCorrect())
                 FixHdrpAssetUsed(fromAsync: false);
-
-            var hdrpAsset = HDRenderPipeline.defaultAsset;
-            if (hdrpAsset == null)
-                return;
-
-
-            // TODO : handle this
-            /*
-            hdrpAsset.renderPipelineEditorResources
-                = AssetDatabase.LoadAssetAtPath<HDRenderPipelineEditorResources>(HDUtils.GetHDRenderPipelinePath() + "Editor/RenderPipelineResources/HDRenderPipelineEditorResources.asset");
-            ResourceReloader.ReloadAllNullIn(HDRenderPipeline.defaultAsset.renderPipelineEditorResources, HDUtils.GetHDRenderPipelinePath());
-            */
         }
 
         bool IsSRPBatcherCorrect()
