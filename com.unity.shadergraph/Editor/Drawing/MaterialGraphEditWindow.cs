@@ -119,8 +119,8 @@ namespace UnityEditor.ShaderGraph.Drawing
         {
             bool shouldClose = true; // Close unless if the same file was replaced
 
-            if (EditorUtility.DisplayDialog("\"" + assetName + "\" Graph Asset Missing!", AssetDatabase.GUIDToAssetPath(selectedGuid)
-                    + " has been deleted or moved outside of Unity.\n\nWhat do you wish to do?", "Save As", "Close Window"))
+            if (EditorUtility.DisplayDialog("\"" + assetName + "\" Graph Asset Missing", AssetDatabase.GUIDToAssetPath(selectedGuid)
+                    + " has been deleted or moved outside of Unity.\n\nWould you like to save your Graph Asset?", "Save As", "Close Window"))
             {
                 shouldClose = !SaveAsImplementation();
             }
@@ -379,7 +379,7 @@ namespace UnityEditor.ShaderGraph.Drawing
                     if (shader != null)
                     {
                         GraphData.onSaveGraph(shader, (graphObject.graph.outputNode as MasterNode).saveContext);
-                    }                    
+                    }
                 }
             }
 
