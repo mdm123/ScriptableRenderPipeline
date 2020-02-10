@@ -22,6 +22,8 @@ Shader "Hidden/GUITextureBlit2SRGB" {
             UNITY_DECLARE_TEX2D(_Exposure);
             uniform float4 _MainTex_ST;
             uniform float4 _Color;
+            uniform float _ExposureBias;
+            uniform float _MipLevel;
             uniform bool _ManualTex2SRGB;
 
             struct appdata_t {
@@ -51,9 +53,9 @@ Shader "Hidden/GUITextureBlit2SRGB" {
             fixed4 frag (v2f i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
-                fixed4 colTex = UNITY_SAMPLE_SCREENSPACE_TEXTURE(_MainTex, i.texcoord);
+                fixed4 colTex = tex2Dlod(_MainTex, float4(i.texcoord, 0, _MipLevel));
                 float exposure = UNITY_SAMPLE_TEX2D(_Exposure, float2(0, 0)).x;
-                return colTex * _Color * exposure;
+                return colTex * _Color * exposure * exp2(_ExposureBias);
             }
             ENDCG
 
