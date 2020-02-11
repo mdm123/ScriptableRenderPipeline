@@ -69,6 +69,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added path tracing support for refraction and internal reflections.
 - Added support for Thin Refraction Model and Lit's Clear Coat in Path Tracing.
 - Added of Screen Space Reflections for Transparent materials
+- Added warning and workaround instructions if XR single-pass is enabled after the first frame with XR SDK.
 
 ### Fixed
 - Update documentation of HDRISky-Backplate, precise how to have Ambient Occlusion on the Backplate
