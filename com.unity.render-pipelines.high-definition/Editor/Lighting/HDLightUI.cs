@@ -771,7 +771,7 @@ namespace UnityEditor.Rendering.HighDefinition
             if (cookie.width < LightCookieManager.k_MinCookieSize || cookie.height < LightCookieManager.k_MinCookieSize)
                 EditorGUILayout.HelpBox(s_Styles.cookieTooSmall, MessageType.Warning);
         }
-
+        
         static void DrawEmissionAdvancedContent(SerializedHDLight serialized, Editor owner)
         {
             HDLightType lightType = serialized.type;
@@ -801,6 +801,21 @@ namespace UnityEditor.Rendering.HighDefinition
                 EditorGUILayout.PropertyField(serialized.displayAreaLightEmissiveMesh, s_Styles.displayAreaLightEmissiveMesh);
                 if (EditorGUI.EndChangeCheck())
                     serialized.needUpdateAreaLightEmissiveMeshComponents = true;
+
+                using (new EditorGUI.DisabledScope(!serialized.displayAreaLightEmissiveMesh.boolValue))
+                {
+                    ++EditorGUI.indentLevel;
+                    EditorGUI.BeginChangeCheck();
+                    ShadowCastingMode newValue = (ShadowCastingMode)EditorGUILayout.EnumPopup(s_Styles.areaLightEmissiveMeshCastShadow, (ShadowCastingMode)serialized.areaLightEmissiveMeshCastShadow.intValue);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        using (new SerializedHDLight.AreaLightEmissiveMeshCastShadowEditionScope(serialized))
+                        {
+                            serialized.areaLightEmissiveMeshCastShadow.intValue = (int)newValue;
+                        }
+                    }
+                    --EditorGUI.indentLevel;
+                }
             }
 
             if (EditorGUI.EndChangeCheck())

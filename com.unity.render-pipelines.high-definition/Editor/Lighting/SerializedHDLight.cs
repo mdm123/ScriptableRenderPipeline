@@ -1,6 +1,7 @@
 using UnityEngine.Rendering.HighDefinition;
 using UnityEngine;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace UnityEditor.Rendering.HighDefinition
 {
@@ -27,6 +28,7 @@ namespace UnityEditor.Rendering.HighDefinition
         public SerializedProperty volumetricDimmer;
         public SerializedProperty lightUnit;
         public SerializedProperty displayAreaLightEmissiveMesh;
+        public SerializedProperty areaLightEmissiveMeshCastShadow;
         public SerializedProperty renderingLayerMask;
         public SerializedProperty shadowNearPlane;
         public SerializedProperty blockerSampleCount;
@@ -84,13 +86,15 @@ namespace UnityEditor.Rendering.HighDefinition
         public SerializedProperty penumbraTint;
         public SerializedProperty shadowUpdateMode;
         public SerializedScalableSettingValue shadowResolution;
-
+        
         // Bias control
         public SerializedProperty slopeBias;
         public SerializedProperty normalBias;
 
         private SerializedProperty pointLightHDType;
         private SerializedProperty areaLightShapeProperty;
+
+        private IEnumerable<GameObject> emissiveMeshes;
 
         public bool needUpdateAreaLightEmissiveMeshComponents = false;
 
@@ -195,6 +199,30 @@ namespace UnityEditor.Rendering.HighDefinition
             }
         }
 
+        public struct AreaLightEmissiveMeshCastShadowEditionScope : System.IDisposable
+        {
+            SerializedHDLight m_Serialized;
+            public AreaLightEmissiveMeshCastShadowEditionScope(SerializedHDLight serialized)
+            {
+                m_Serialized = serialized;
+                foreach (GameObject emissiveMesh in m_Serialized.emissiveMeshes)
+                {
+                    emissiveMesh.hideFlags &= ~HideFlags.NotEditable;
+                }
+                m_Serialized.areaLightEmissiveMeshCastShadow.serializedObject.Update();
+            }
+
+            void System.IDisposable.Dispose()
+            {
+                m_Serialized.areaLightEmissiveMeshCastShadow.serializedObject.ApplyModifiedProperties();
+                foreach (GameObject emissiveMesh in m_Serialized.emissiveMeshes)
+                {
+                    emissiveMesh.hideFlags |= HideFlags.NotEditable;
+                }
+                m_Serialized.areaLightEmissiveMeshCastShadow.serializedObject.Update();
+            }
+        }
+
         public SerializedHDLight(HDAdditionalLightData[] lightDatas, LightEditor.Settings settings)
         {
             serializedObject = new SerializedObject(lightDatas);
@@ -288,6 +316,10 @@ namespace UnityEditor.Rendering.HighDefinition
                 pointLightHDType = o.Find("m_PointlightHDType");
                 areaLightShapeProperty = o.Find("m_AreaLightShape");
             }
+
+            IEnumerable<MeshRenderer> meshRenderers = serializedObject.targetObjects.Select(ld => ((HDAdditionalLightData)ld).emissiveMeshRenderer);
+            emissiveMeshes = meshRenderers.Select(mr => mr.gameObject).ToArray();
+            areaLightEmissiveMeshCastShadow = new SerializedObject(meshRenderers.ToArray()).FindProperty("m_CastShadows");
         }
 
         public void Update()
