@@ -178,9 +178,53 @@ namespace UnityEditor.Rendering.Universal
             if(m_RenderPasses.arraySize != m_Foldouts.Length)
                 CreateFoldoutBools();
 
-            m_PassesList.DoLayoutList();
+            //m_PassesList.DoLayoutList();
+
+            DrawRendererFeatureList();
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private void DrawRendererFeatureList()
+        {
+            for (int i = 0; i < m_RenderPasses.arraySize; i++)
+            {
+                var prop = m_RenderPasses.GetArrayElementAtIndex(i);
+                DrawRendererFeature(i, ref prop);
+            }
+        }
+
+        private void DrawRendererFeature(int index, ref SerializedProperty prop)
+        {
+            var obj = prop.objectReferenceValue;
+            if (obj == null)
+            {
+                EditorGUILayout.LabelField("Missing");
+                return;
+            }
+
+            var serializedFeature = new SerializedObject(obj);
+            var enabled = serializedFeature.FindProperty("enabled");
+
+            //EditorGUILayout.BeginHorizontal();
+            var headerRect = EditorGUILayout.GetControlRect(false);
+            var enabledRect = new Rect(headerRect.x, headerRect.y, EditorGUIUtility.singleLineHeight, headerRect.height);
+            var nameRect = new Rect(headerRect.x + EditorGUIUtility.singleLineHeight, headerRect.y, headerRect.width - EditorGUIUtility.singleLineHeight, headerRect.height);
+
+            Editor editor = CreateEditor(obj);
+            m_Foldouts[index].value = EditorGUILayout.InspectorTitlebar(m_Foldouts[index].value, obj);
+            if (m_Foldouts[index].value)
+            {
+                editor.DrawDefaultInspector();
+            }
+            //EditorGUI.PropertyField(enabledRect, enabled, GUIContent.none);
+            //m_Foldouts[index].value = EditorGUI.Foldout(headerRect, m_Foldouts[index].value, GUIContent.none);
+            //EditorGUI.LabelField(nameRect, $"{obj.name} ({obj.GetType().Name})", EditorStyles.boldLabel);
+            //EditorGUILayout.EndHorizontal();
+
+            serializedFeature.ApplyModifiedProperties();
+            EditorUtility.SetDirty(obj);
+
         }
 
         private void CreateFoldoutBools()

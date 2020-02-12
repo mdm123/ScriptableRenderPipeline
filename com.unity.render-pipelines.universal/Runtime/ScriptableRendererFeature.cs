@@ -9,6 +9,7 @@ namespace UnityEngine.Rendering.Universal
     /// <seealso cref="ScriptableRenderPass"/>
     [MovedFrom("UnityEngine.Rendering.LWRP")] public abstract class ScriptableRendererFeature : ScriptableObject
     {
+        public bool m_Enabled = true;
         /// <summary>
         /// Initializes this feature's resources. This is called every time serialization happens.
         /// </summary>
