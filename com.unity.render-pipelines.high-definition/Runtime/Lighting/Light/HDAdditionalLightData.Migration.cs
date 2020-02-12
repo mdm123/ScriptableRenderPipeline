@@ -145,8 +145,12 @@ namespace UnityEngine.Rendering.HighDefinition
                 }),
                 MigrationStep.New(Version.MoveEmissionMesh, (HDAdditionalLightData data) =>
                 {
+                    MeshRenderer emissiveMesh = data.GetComponent<MeshRenderer>();
+                    ShadowCastingMode oldMode = emissiveMesh.shadowCastingMode;
                     CoreUtils.Destroy(data.GetComponent<MeshFilter>());
-                    CoreUtils.Destroy(data.GetComponent<MeshRenderer>());
+                    CoreUtils.Destroy(emissiveMesh);
+                    data.UpdateAreaLightEmissiveMesh();
+                    data.emissiveMeshRenderer.shadowCastingMode = oldMode;
                 })
             );
 #pragma warning restore 0618, 0612

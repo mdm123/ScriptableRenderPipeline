@@ -1476,6 +1476,7 @@ namespace UnityEngine.Rendering.HighDefinition
                     m_ChildEmissiveMeshViewer.transform.localPosition = Vector3.zero;
                     m_ChildEmissiveMeshViewer.transform.localRotation = Quaternion.identity;
                     m_ChildEmissiveMeshViewer.transform.localScale = Vector3.one;
+                    m_ChildEmissiveMeshViewer.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
                 }
 
                 return m_ChildEmissiveMeshViewer;
