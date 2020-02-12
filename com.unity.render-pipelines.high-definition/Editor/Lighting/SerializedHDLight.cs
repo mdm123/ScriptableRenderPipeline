@@ -29,6 +29,7 @@ namespace UnityEditor.Rendering.HighDefinition
         public SerializedProperty lightUnit;
         public SerializedProperty displayAreaLightEmissiveMesh;
         public SerializedProperty areaLightEmissiveMeshCastShadow;
+        public SerializedProperty areaLightEmissiveMeshMotionVector;
         public SerializedProperty renderingLayerMask;
         public SerializedProperty shadowNearPlane;
         public SerializedProperty blockerSampleCount;
@@ -199,10 +200,10 @@ namespace UnityEditor.Rendering.HighDefinition
             }
         }
 
-        public struct AreaLightEmissiveMeshCastShadowEditionScope : System.IDisposable
+        public struct AreaLightEmissiveMeshEditionScope : System.IDisposable
         {
             SerializedHDLight m_Serialized;
-            public AreaLightEmissiveMeshCastShadowEditionScope(SerializedHDLight serialized)
+            public AreaLightEmissiveMeshEditionScope(SerializedHDLight serialized)
             {
                 m_Serialized = serialized;
                 foreach (GameObject emissiveMesh in m_Serialized.emissiveMeshes)
@@ -319,7 +320,9 @@ namespace UnityEditor.Rendering.HighDefinition
 
             IEnumerable<MeshRenderer> meshRenderers = serializedObject.targetObjects.Select(ld => ((HDAdditionalLightData)ld).emissiveMeshRenderer);
             emissiveMeshes = meshRenderers.Select(mr => mr.gameObject).ToArray();
-            areaLightEmissiveMeshCastShadow = new SerializedObject(meshRenderers.ToArray()).FindProperty("m_CastShadows");
+            SerializedObject meshRendererSerializedObject = new SerializedObject(meshRenderers.ToArray());
+            areaLightEmissiveMeshCastShadow = meshRendererSerializedObject.FindProperty("m_CastShadows");
+            areaLightEmissiveMeshMotionVector = meshRendererSerializedObject.FindProperty("m_MotionVectors");
         }
 
         public void Update()

@@ -771,7 +771,14 @@ namespace UnityEditor.Rendering.HighDefinition
             if (cookie.width < LightCookieManager.k_MinCookieSize || cookie.height < LightCookieManager.k_MinCookieSize)
                 EditorGUILayout.HelpBox(s_Styles.cookieTooSmall, MessageType.Warning);
         }
-        
+
+        enum MotionVector
+        {
+            CameraMotionOnly = MotionVectorGenerationMode.Camera,
+            PerObjectMotion = MotionVectorGenerationMode.Object,
+            ForceNoMotion = MotionVectorGenerationMode.ForceNoMotion
+        }
+
         static void DrawEmissionAdvancedContent(SerializedHDLight serialized, Editor owner)
         {
             HDLightType lightType = serialized.type;
@@ -805,15 +812,27 @@ namespace UnityEditor.Rendering.HighDefinition
                 using (new EditorGUI.DisabledScope(!serialized.displayAreaLightEmissiveMesh.boolValue))
                 {
                     ++EditorGUI.indentLevel;
+
                     EditorGUI.BeginChangeCheck();
-                    ShadowCastingMode newValue = (ShadowCastingMode)EditorGUILayout.EnumPopup(s_Styles.areaLightEmissiveMeshCastShadow, (ShadowCastingMode)serialized.areaLightEmissiveMeshCastShadow.intValue);
+                    ShadowCastingMode newCastShadow = (ShadowCastingMode)EditorGUILayout.EnumPopup(s_Styles.areaLightEmissiveMeshCastShadow, (ShadowCastingMode)serialized.areaLightEmissiveMeshCastShadow.intValue);
                     if (EditorGUI.EndChangeCheck())
                     {
-                        using (new SerializedHDLight.AreaLightEmissiveMeshCastShadowEditionScope(serialized))
+                        using (new SerializedHDLight.AreaLightEmissiveMeshEditionScope(serialized))
                         {
-                            serialized.areaLightEmissiveMeshCastShadow.intValue = (int)newValue;
+                            serialized.areaLightEmissiveMeshCastShadow.intValue = (int)newCastShadow;
                         }
                     }
+                    
+                    EditorGUI.BeginChangeCheck();
+                    MotionVector newMotionVector = (MotionVector)EditorGUILayout.EnumPopup(s_Styles.areaLightEmissiveMeshMotionVector, (MotionVector)serialized.areaLightEmissiveMeshMotionVector.intValue);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        using (new SerializedHDLight.AreaLightEmissiveMeshEditionScope(serialized))
+                        {
+                            serialized.areaLightEmissiveMeshMotionVector.intValue = (int)newMotionVector;
+                        }
+                    }
+
                     --EditorGUI.indentLevel;
                 }
             }
