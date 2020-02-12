@@ -23,7 +23,7 @@ namespace UnityEditor.Rendering.Universal
             public static GUIContent rendererHeaderText = EditorGUIUtility.TrTextContent("Renderer List", "Lists all the renderers available to this Render Pipeline Asset.");
             public static GUIContent rendererDefaultText = EditorGUIUtility.TrTextContent("Default", "This renderer is currently the default for the render pipeline.");
             public static GUIContent rendererSetDefaultText = EditorGUIUtility.TrTextContent("Set Default", "Makes this renderer the default for the render pipeline.");
-            public static GUIContent rendererSettingsText = EditorGUIUtility.TrIconContent("Settings", "Opens settings for this renderer.");
+            public static GUIContent rendererSettingsText = EditorGUIUtility.TrTextContent("Inspect", "Opens settings for this renderer.");
             public static GUIContent rendererMissingText = EditorGUIUtility.TrIconContent("console.warnicon.sml", "Renderer missing. Click this to select a new renderer.");
             public static GUIContent rendererDefaultMissingText = EditorGUIUtility.TrIconContent("console.erroricon.sml", "Default renderer missing. Click this to select a new renderer.");
             public static GUIContent requireDepthTextureText = EditorGUIUtility.TrTextContent("Depth Texture", "If enabled the pipeline will generate camera's depth that can be bound in shaders as _CameraDepthTexture.");
@@ -395,7 +395,7 @@ namespace UnityEditor.Rendering.Universal
                 if(EditorGUI.EndChangeCheck())
                     EditorUtility.SetDirty(target);
 
-                Rect defaultButton = new Rect(rect.width - 90, rect.y, 86, EditorGUIUtility.singleLineHeight);
+                Rect defaultButton = new Rect(rect.width - 90, rect.y, 58, EditorGUIUtility.singleLineHeight);
                 var defaultRenderer = m_DefaultRendererProp.intValue;
                 GUI.enabled = index != defaultRenderer;
                 if(GUI.Button(defaultButton, !GUI.enabled ? Styles.rendererDefaultText : Styles.rendererSetDefaultText))
@@ -405,7 +405,7 @@ namespace UnityEditor.Rendering.Universal
                 }
                 GUI.enabled = true;
 
-                Rect selectRect = new Rect(rect.x + rect.width - 24, rect.y, 24, EditorGUIUtility.singleLineHeight);
+                Rect selectRect = new Rect(rect.x + rect.width - 55, rect.y, 55, EditorGUIUtility.singleLineHeight);
 
                 UniversalRenderPipelineAsset asset = target as UniversalRenderPipelineAsset;
 
