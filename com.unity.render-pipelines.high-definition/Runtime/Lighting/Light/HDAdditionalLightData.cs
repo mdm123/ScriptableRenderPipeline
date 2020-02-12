@@ -2337,9 +2337,22 @@ namespace UnityEngine.Rendering.HighDefinition
                 // We don't have anything to do left if the dislay emissive mesh option is disabled
                 return;
             }
-            
-            // Update light area size from GameObject transform scale if the transform have changed
-            // else we update the light size from the shape fields
+
+            // Update Mesh
+            switch (areaLightShape)
+            {
+                case AreaLightShape.Tube:
+                    if (emissiveMeshFilter.sharedMesh != HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveCylinderMesh)
+                        emissiveMeshFilter.sharedMesh = HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveCylinderMesh;
+                    break;
+                case AreaLightShape.Rectangle:
+                default:
+                    if (emissiveMeshFilter.sharedMesh != HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveQuadMesh)
+                        emissiveMeshFilter.sharedMesh = HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveQuadMesh;
+                    break;
+            }
+
+            // Update light area size with clamping
             Vector3 lightSize = new Vector3(m_ShapeWidth, m_ShapeHeight, 0);
             if (areaLightShape == AreaLightShape.Tube)
                 lightSize.y = 0;
@@ -2359,12 +2372,13 @@ namespace UnityEngine.Rendering.HighDefinition
             }
 
             legacyLight.areaSize = lightSize;
-            
+
+            // Update child emissive mesh scale
             if (emissiveMeshRenderer)
             {
                 emissiveMeshRenderer.enabled = true;
                 Vector3 lossyScale = emissiveMeshRenderer.transform.localRotation * transform.lossyScale;
-                emissiveMeshRenderer.transform.localScale = new Vector3(lightSize.x / lossyScale.x, lightSize.y / lossyScale.y, 1);
+                emissiveMeshRenderer.transform.localScale = new Vector3(lightSize.x / lossyScale.x, lightSize.y / lossyScale.y, k_MinAreaWidth / lossyScale.z);
             }
 
             // NOTE: When the user duplicates a light in the editor, the material is not duplicated and when changing the properties of one of them (source or duplication)
