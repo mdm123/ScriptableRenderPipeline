@@ -1460,7 +1460,7 @@ namespace UnityEngine.Rendering.HighDefinition
                         if(child.name == k_EmissiveMeshViewerName
                             && child.GetComponent<MeshFilter>() != null
                             && child.GetComponent<MeshRenderer>() != null
-                            && child.gameObject.hideFlags == HideFlags.NotEditable)
+                            && (child.gameObject.hideFlags == HideFlags.NotEditable || child.gameObject.hideFlags == (HideFlags.NotEditable | HideFlags.HideInHierarchy)))
                         {
                             m_ChildEmissiveMeshViewer = child.gameObject;
                             return m_ChildEmissiveMeshViewer;
@@ -1471,8 +1471,7 @@ namespace UnityEngine.Rendering.HighDefinition
                 //if still not here, create it
                 if (m_ChildEmissiveMeshViewer == null || m_ChildEmissiveMeshViewer.Equals(null))
                 {
-                    m_ChildEmissiveMeshViewer = new GameObject(k_EmissiveMeshViewerName, typeof(MeshFilter), typeof(MeshRenderer));
-                    m_ChildEmissiveMeshViewer.hideFlags = HideFlags.NotEditable;
+                    m_ChildEmissiveMeshViewer = EditorUtility.CreateGameObjectWithHideFlags(k_EmissiveMeshViewerName, HideFlags.NotEditable, typeof(MeshFilter), typeof(MeshRenderer));
                     m_ChildEmissiveMeshViewer.transform.SetParent(transform);
                     m_ChildEmissiveMeshViewer.transform.localPosition = Vector3.zero;
                     m_ChildEmissiveMeshViewer.transform.localRotation = Quaternion.identity;
@@ -2330,12 +2329,7 @@ namespace UnityEngine.Rendering.HighDefinition
             }
 
             // Show Emissive Mesh if needed
-            if (displayEmissiveMesh)
-            {
-                if (emissiveMeshRenderer)
-                    emissiveMeshRenderer.enabled = true;
-            }
-            else // Or remove them if the option is disabled
+            if (!displayEmissiveMesh)
             {
                 if (emissiveMeshRenderer)
                     emissiveMeshRenderer.enabled = false;
@@ -2343,42 +2337,13 @@ namespace UnityEngine.Rendering.HighDefinition
                 // We don't have anything to do left if the dislay emissive mesh option is disabled
                 return;
             }
-
-            Vector3 lightSize;
-
+            
             // Update light area size from GameObject transform scale if the transform have changed
             // else we update the light size from the shape fields
-            if (timelineWorkaround.oldLossyScale != transform.lossyScale)
-                lightSize = transform.lossyScale;
-            else
-                lightSize = new Vector3(m_ShapeWidth, m_ShapeHeight, transform.localScale.z);
-
+            Vector3 lightSize = new Vector3(m_ShapeWidth, m_ShapeHeight, 0);
             if (areaLightShape == AreaLightShape.Tube)
-                lightSize.y = k_MinAreaWidth;
-            lightSize.z = k_MinAreaWidth;
-
+                lightSize.y = 0;
             lightSize = Vector3.Max(Vector3.one * k_MinAreaWidth, lightSize);
-#if UNITY_EDITOR
-            legacyLight.areaSize = lightSize;
-
-            // When we're inside the editor, and the scale of the transform will change
-            // then we must record it with inside the undo
-            if (legacyLight.transform.localScale != lightSize)
-            {
-                Undo.RecordObject(transform, "Light Scale changed");
-            }
-#endif
-
-            Vector3 lossyToLocalScale = lightSize;
-            if (transform.parent != null)
-            {
-                lossyToLocalScale = new Vector3(
-                    lightSize.x / transform.parent.lossyScale.x,
-                    lightSize.y / transform.parent.lossyScale.y,
-                    lightSize.z / transform.parent.lossyScale.z
-                );
-            }
-            legacyLight.transform.localScale = lossyToLocalScale;
 
             switch (areaLightShape)
             {
@@ -2391,6 +2356,15 @@ namespace UnityEngine.Rendering.HighDefinition
                     break;
                 default:
                     break;
+            }
+
+            legacyLight.areaSize = lightSize;
+            
+            if (emissiveMeshRenderer)
+            {
+                emissiveMeshRenderer.enabled = true;
+                Vector3 lossyScale = emissiveMeshRenderer.transform.localRotation * transform.lossyScale;
+                emissiveMeshRenderer.transform.localScale = new Vector3(lightSize.x / lossyScale.x, lightSize.y / lossyScale.y, 1);
             }
 
             // NOTE: When the user duplicates a light in the editor, the material is not duplicated and when changing the properties of one of them (source or duplication)
@@ -2524,7 +2498,6 @@ namespace UnityEngine.Rendering.HighDefinition
             UpdateBounds();
 
             UpdateAreaLightEmissiveMesh();
-            // TODO: synch emissive quad
         }
 
 #endregion
