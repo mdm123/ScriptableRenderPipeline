@@ -809,10 +809,11 @@ namespace UnityEditor.Rendering.HighDefinition
                 if (EditorGUI.EndChangeCheck())
                     serialized.needUpdateAreaLightEmissiveMeshComponents = true;
 
-                using (new EditorGUI.DisabledScope(!serialized.displayAreaLightEmissiveMesh.boolValue))
+                using (new EditorGUI.DisabledScope(!serialized.displayAreaLightEmissiveMesh.boolValue || serialized.displayAreaLightEmissiveMesh.hasMultipleDifferentValues))
                 {
                     ++EditorGUI.indentLevel;
 
+                    EditorGUI.showMixedValue = serialized.areaLightEmissiveMeshCastShadow.hasMultipleDifferentValues;
                     EditorGUI.BeginChangeCheck();
                     ShadowCastingMode newCastShadow = (ShadowCastingMode)EditorGUILayout.EnumPopup(s_Styles.areaLightEmissiveMeshCastShadow, (ShadowCastingMode)serialized.areaLightEmissiveMeshCastShadow.intValue);
                     if (EditorGUI.EndChangeCheck())
@@ -822,7 +823,8 @@ namespace UnityEditor.Rendering.HighDefinition
                             serialized.areaLightEmissiveMeshCastShadow.intValue = (int)newCastShadow;
                         }
                     }
-                    
+
+                    EditorGUI.showMixedValue = serialized.areaLightEmissiveMeshMotionVector.hasMultipleDifferentValues;
                     EditorGUI.BeginChangeCheck();
                     MotionVector newMotionVector = (MotionVector)EditorGUILayout.EnumPopup(s_Styles.areaLightEmissiveMeshMotionVector, (MotionVector)serialized.areaLightEmissiveMeshMotionVector.intValue);
                     if (EditorGUI.EndChangeCheck())
@@ -833,6 +835,7 @@ namespace UnityEditor.Rendering.HighDefinition
                         }
                     }
 
+                    EditorGUI.showMixedValue = false;
                     --EditorGUI.indentLevel;
                 }
             }
