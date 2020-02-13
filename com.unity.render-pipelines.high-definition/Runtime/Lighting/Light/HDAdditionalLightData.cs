@@ -1471,7 +1471,8 @@ namespace UnityEngine.Rendering.HighDefinition
                 //if still not here, create it
                 if (m_ChildEmissiveMeshViewer == null || m_ChildEmissiveMeshViewer.Equals(null))
                 {
-                    m_ChildEmissiveMeshViewer = EditorUtility.CreateGameObjectWithHideFlags(k_EmissiveMeshViewerName, HideFlags.NotEditable, typeof(MeshFilter), typeof(MeshRenderer));
+                    m_ChildEmissiveMeshViewer = new GameObject(k_EmissiveMeshViewerName, typeof(MeshFilter), typeof(MeshRenderer));
+                    m_ChildEmissiveMeshViewer.hideFlags = HideFlags.NotEditable;
                     m_ChildEmissiveMeshViewer.transform.SetParent(transform);
                     m_ChildEmissiveMeshViewer.transform.localPosition = Vector3.zero;
                     m_ChildEmissiveMeshViewer.transform.localRotation = Quaternion.identity;
@@ -2315,6 +2316,7 @@ namespace UnityEngine.Rendering.HighDefinition
             bool displayEmissiveMesh = isAreaLight && displayAreaLightEmissiveMesh;
 
             // Only show childEmissiveMeshViewer if type is Area
+#if UNITY_EDITOR
             if (isAreaLight)
             {
                 if (childEmissiveMeshViewer.hideFlags == (HideFlags.NotEditable | HideFlags.HideInHierarchy))
@@ -2328,6 +2330,7 @@ namespace UnityEngine.Rendering.HighDefinition
                     EditorApplication.DirtyHierarchyWindowSorting();
                 }
             }
+#endif
 
             // Show Emissive Mesh if needed
             if (!displayEmissiveMesh)
@@ -2372,7 +2375,9 @@ namespace UnityEngine.Rendering.HighDefinition
                     break;
             }
 
+#if UNITY_EDITOR
             legacyLight.areaSize = lightSize;
+#endif
 
             // Update child emissive mesh scale
             if (emissiveMeshRenderer)
