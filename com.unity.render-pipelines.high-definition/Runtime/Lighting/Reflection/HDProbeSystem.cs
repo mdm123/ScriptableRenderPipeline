@@ -14,8 +14,10 @@ namespace UnityEngine.Rendering.HighDefinition
             s_Instance = new HDProbeSystemInternal();
 #if UNITY_EDITOR
             UnityEditor.AssemblyReloadEvents.beforeAssemblyReload += DisposeStaticInstance;
-#endif
+            UnityEditor.EditorApplication.quitting += DisposeStaticInstance;
+#else
             Application.quitting += DisposeStaticInstance;
+#endif
         }
 
         // Don't set the reference to null
