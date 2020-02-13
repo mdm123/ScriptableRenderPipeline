@@ -224,6 +224,27 @@ namespace UnityEditor.Rendering.HighDefinition
             }
         }
 
+        public struct AreaLightEmissiveMeshDrawScope : System.IDisposable
+        {
+            int propertyCount;
+            bool oldEnableState;
+            public AreaLightEmissiveMeshDrawScope(Rect rect, GUIContent label, bool enabler, params SerializedProperty[] properties)
+            {
+                propertyCount = properties.Length;
+                foreach (var property in properties)
+                    EditorGUI.BeginProperty(rect, label, property);
+                oldEnableState = GUI.enabled;
+                GUI.enabled = enabler;
+            }
+
+            void System.IDisposable.Dispose()
+            {
+                GUI.enabled = oldEnableState;
+                for (int i = 0; i < propertyCount; ++i)
+                    EditorGUI.EndProperty();
+            }
+        }
+
         public SerializedHDLight(HDAdditionalLightData[] lightDatas, LightEditor.Settings settings)
         {
             serializedObject = new SerializedObject(lightDatas);

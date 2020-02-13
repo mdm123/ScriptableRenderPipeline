@@ -809,35 +809,43 @@ namespace UnityEditor.Rendering.HighDefinition
                 if (EditorGUI.EndChangeCheck())
                     serialized.needUpdateAreaLightEmissiveMeshComponents = true;
 
-                using (new EditorGUI.DisabledScope(!serialized.displayAreaLightEmissiveMesh.boolValue || serialized.displayAreaLightEmissiveMesh.hasMultipleDifferentValues))
+                bool showSubArea = serialized.displayAreaLightEmissiveMesh.boolValue && !serialized.displayAreaLightEmissiveMesh.hasMultipleDifferentValues;
+                ++EditorGUI.indentLevel;
+                    
+                Rect lineRect = EditorGUILayout.GetControlRect();
+                ShadowCastingMode newCastShadow;
+                EditorGUI.showMixedValue = serialized.areaLightEmissiveMeshCastShadow.hasMultipleDifferentValues;
+                EditorGUI.BeginChangeCheck();
+                using (new SerializedHDLight.AreaLightEmissiveMeshDrawScope(lineRect, s_Styles.areaLightEmissiveMeshCastShadow, showSubArea, serialized.areaLightEmissiveMeshCastShadow))
                 {
-                    ++EditorGUI.indentLevel;
-
-                    EditorGUI.showMixedValue = serialized.areaLightEmissiveMeshCastShadow.hasMultipleDifferentValues;
-                    EditorGUI.BeginChangeCheck();
-                    ShadowCastingMode newCastShadow = (ShadowCastingMode)EditorGUILayout.EnumPopup(s_Styles.areaLightEmissiveMeshCastShadow, (ShadowCastingMode)serialized.areaLightEmissiveMeshCastShadow.intValue);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        using (new SerializedHDLight.AreaLightEmissiveMeshEditionScope(serialized))
-                        {
-                            serialized.areaLightEmissiveMeshCastShadow.intValue = (int)newCastShadow;
-                        }
-                    }
-
-                    EditorGUI.showMixedValue = serialized.areaLightEmissiveMeshMotionVector.hasMultipleDifferentValues;
-                    EditorGUI.BeginChangeCheck();
-                    MotionVector newMotionVector = (MotionVector)EditorGUILayout.EnumPopup(s_Styles.areaLightEmissiveMeshMotionVector, (MotionVector)serialized.areaLightEmissiveMeshMotionVector.intValue);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        using (new SerializedHDLight.AreaLightEmissiveMeshEditionScope(serialized))
-                        {
-                            serialized.areaLightEmissiveMeshMotionVector.intValue = (int)newMotionVector;
-                        }
-                    }
-
-                    EditorGUI.showMixedValue = false;
-                    --EditorGUI.indentLevel;
+                    newCastShadow = (ShadowCastingMode)EditorGUI.EnumPopup(lineRect, s_Styles.areaLightEmissiveMeshCastShadow, (ShadowCastingMode)serialized.areaLightEmissiveMeshCastShadow.intValue);
                 }
+                if (EditorGUI.EndChangeCheck())
+                {
+                    using (new SerializedHDLight.AreaLightEmissiveMeshEditionScope(serialized))
+                    {
+                        serialized.areaLightEmissiveMeshCastShadow.intValue = (int)newCastShadow;
+                    }
+                }
+
+                lineRect = EditorGUILayout.GetControlRect();
+                MotionVector newMotionVector;
+                EditorGUI.showMixedValue = serialized.areaLightEmissiveMeshMotionVector.hasMultipleDifferentValues;
+                EditorGUI.BeginChangeCheck();
+                using (new SerializedHDLight.AreaLightEmissiveMeshDrawScope(lineRect, s_Styles.areaLightEmissiveMeshMotionVector, showSubArea, serialized.areaLightEmissiveMeshMotionVector))
+                {
+                    newMotionVector = (MotionVector)EditorGUI.EnumPopup(lineRect, s_Styles.areaLightEmissiveMeshMotionVector, (MotionVector)serialized.areaLightEmissiveMeshMotionVector.intValue);
+                }
+                if (EditorGUI.EndChangeCheck())
+                {
+                    using (new SerializedHDLight.AreaLightEmissiveMeshEditionScope(serialized))
+                    {
+                        serialized.areaLightEmissiveMeshMotionVector.intValue = (int)newMotionVector;
+                    }
+                }
+
+                EditorGUI.showMixedValue = false;
+                --EditorGUI.indentLevel;
             }
 
             if (EditorGUI.EndChangeCheck())
