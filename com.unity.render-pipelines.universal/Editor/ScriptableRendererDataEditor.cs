@@ -1,13 +1,9 @@
 using System;
-using System.Linq;
-using System.Collections.Generic;
-using System.Reflection;
-using UnityEditorInternal;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using System.Text.RegularExpressions;
 using UnityEngine.Scripting.APIUpdating;
-using Object = UnityEngine.Object;
 
 namespace UnityEditor.Rendering.Universal
 {
@@ -33,152 +29,24 @@ namespace UnityEditor.Rendering.Universal
         }
 
         SavedBool[] m_Foldouts;
+        private int m_IsRenaming = -1;
+        private const string RenameControl = "render_feature_rename";
         SerializedProperty m_RenderPasses;
 
-        ReorderableList m_PassesList;
-        List<SerializedObject> m_ElementSOs = new List<SerializedObject>();
-
-        SerializedObject GetElementSO(int index)
-        {
-            if (m_ElementSOs.Count != m_RenderPasses.arraySize || m_ElementSOs[index] == null)
-            {
-                m_ElementSOs.Clear();
-                for (int i = 0; i < m_RenderPasses.arraySize; i++)
-                {
-                    var obj = m_RenderPasses.GetArrayElementAtIndex(i)?.objectReferenceValue;
-                    m_ElementSOs.Add(obj != null ? new SerializedObject(obj) : null);
-                }
-            }
-
-            m_ElementSOs[index].Update();
-            return m_ElementSOs[index];
-        }
-
-        private void OnValidate()
+        private void OnEnable()
         {
             m_RenderPasses = serializedObject.FindProperty("m_RendererFeatures");
             CreateFoldoutBools();
-
-            m_PassesList = new ReorderableList(m_RenderPasses.serializedObject,
-                                                m_RenderPasses,
-                                                true,
-                                                true,
-                                                true,
-                                                true);
-
-            m_PassesList.drawElementCallback += DrawElementCallback;
-
-            m_PassesList.elementHeightCallback = (index) =>
-            {
-                var height = EditorUtils.Styles.defaultLineSpace + (EditorGUIUtility.standardVerticalSpacing * 2);
-
-                var element = m_PassesList.serializedProperty.GetArrayElementAtIndex(index);
-                if (element.objectReferenceValue == null)
-                    return height;
-
-                if (m_Foldouts[index].value)
-                {
-                    height += EditorUtils.Styles.defaultLineSpace;
-                    var serializedObject = GetElementSO(index);
-                    var settingsProp = serializedObject.FindProperty("settings");
-                    if (settingsProp != null)
-                    {
-                        return height + EditorGUI.GetPropertyHeight(settingsProp) +
-                               EditorGUIUtility.standardVerticalSpacing;
-                    }
-                }
-                return height;
-            };
-
-            m_PassesList.onAddCallback = AddPass;
-            m_PassesList.onRemoveCallback = RemovePass;
-            m_PassesList.onReorderCallbackWithDetails = ReorderPass;
-
-            m_PassesList.drawHeaderCallback = (Rect testHeaderRect) => {
-                GUI.Label(testHeaderRect, Styles.RenderFeatures);
-            };
-        }
-
-        void DrawElementCallback(Rect rect, int index, bool isActive, bool isFocused)
-        {
-            if(index % 2 != 0)
-                    EditorGUI.DrawRect(new Rect(rect.x - 19f, rect.y, rect.width + 23f, rect.height), new Color(0, 0, 0, 0.1f));
-
-            EditorGUI.BeginChangeCheck();
-            var element = m_PassesList.serializedProperty.GetArrayElementAtIndex(index);
-            var propRect = new Rect(rect.x,
-                                    rect.y + EditorGUIUtility.standardVerticalSpacing,
-                                    rect.width,
-                                    EditorGUIUtility.singleLineHeight);
-            var headerRect = new Rect(rect.x,
-                                        rect.y + EditorGUIUtility.standardVerticalSpacing,
-                                        rect.width,
-                                        EditorGUIUtility.singleLineHeight);
-
-            if (element.objectReferenceValue != null)
-            {
-                // Get the type and append that to the name
-                name = $"{element.objectReferenceValue.name} ({element.objectReferenceValue.GetType().Name})";
-
-                GUIContent header = new GUIContent(name,
-                    element.objectReferenceValue.GetType().Name);
-                m_Foldouts[index].value =
-                    EditorGUI.Foldout(headerRect,
-                        m_Foldouts[index].value,
-                        GUIContent.none,
-                        true,
-                        Styles.BoldLabelSimple);
-                GUI.Label(headerRect, header, Styles.BoldLabelSimple);
-                if (m_Foldouts[index].value)
-                {
-                    EditorGUI.indentLevel++;
-                    propRect.y += EditorUtils.Styles.defaultLineSpace;
-                    EditorGUI.BeginChangeCheck();
-                    var objName = EditorGUI.DelayedTextField(propRect, Styles.PassNameField,
-                        element.objectReferenceValue.name);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        objName = ValidatePassName(objName);
-                        element.objectReferenceValue.name = objName;
-                        AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
-                    }
-
-                    var elementSO = GetElementSO(index);
-                    SerializedProperty settings = elementSO.FindProperty("settings");
-
-                    EditorGUI.BeginChangeCheck();
-                    if (settings != null)
-                    {
-                        propRect.y += EditorUtils.Styles.defaultLineSpace;
-                        EditorGUI.PropertyField(propRect, settings, true);
-                    }
-
-                    if (EditorGUI.EndChangeCheck())
-                        elementSO.ApplyModifiedProperties();
-                    EditorGUI.indentLevel--;
-                }
-            }
-            else
-            {
-                EditorGUI.ObjectField(propRect, element, GUIContent.none);
-            }
-
-            if (EditorGUI.EndChangeCheck())
-            {
-               element.serializedObject.ApplyModifiedProperties();
-            }
         }
 
         public override void OnInspectorGUI()
         {
+            if(m_RenderPasses == null)
+                OnEnable();
             serializedObject.Update();
 
-            if(m_PassesList == null)
-                OnValidate();
             if(m_RenderPasses.arraySize != m_Foldouts.Length)
                 CreateFoldoutBools();
-
-            //m_PassesList.DoLayoutList();
 
             DrawRendererFeatureList();
 
@@ -187,10 +55,26 @@ namespace UnityEditor.Rendering.Universal
 
         private void DrawRendererFeatureList()
         {
+            EditorGUILayout.LabelField(Styles.RenderFeatures, EditorStyles.boldLabel);
+            EditorGUILayout.Space();
+
+            //Draw List
+            CoreEditorUtils.DrawSplitter();
             for (int i = 0; i < m_RenderPasses.arraySize; i++)
             {
                 var prop = m_RenderPasses.GetArrayElementAtIndex(i);
                 DrawRendererFeature(i, ref prop);
+                CoreEditorUtils.DrawSplitter();
+            }
+            EditorGUILayout.Space();
+
+            //Add renderer
+            using (var hscope = new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Add Renderer Feature", EditorStyles.miniButton))
+                {
+                    AddPass();
+                }
             }
         }
 
@@ -206,25 +90,69 @@ namespace UnityEditor.Rendering.Universal
             var serializedFeature = new SerializedObject(obj);
             var enabled = serializedFeature.FindProperty("enabled");
 
-            //EditorGUILayout.BeginHorizontal();
-            var headerRect = EditorGUILayout.GetControlRect(false);
-            var enabledRect = new Rect(headerRect.x, headerRect.y, EditorGUIUtility.singleLineHeight, headerRect.height);
-            var nameRect = new Rect(headerRect.x + EditorGUIUtility.singleLineHeight, headerRect.y, headerRect.width - EditorGUIUtility.singleLineHeight, headerRect.height);
-
             Editor editor = CreateEditor(obj);
-            m_Foldouts[index].value = EditorGUILayout.InspectorTitlebar(m_Foldouts[index].value, obj);
-            if (m_Foldouts[index].value)
+            var displayContent = prop.isExpanded;
+
+            if (m_IsRenaming == index)
+            {
+                EditorGUI.BeginChangeCheck();
+                GUI.SetNextControlName(RenameControl);
+                var newName = EditorGUI.DelayedTextField(EditorGUILayout.GetControlRect(), obj.name);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Undo.RecordObject(obj, "Rename Render Feature");
+                    obj.name = ValidatePassName(newName);
+                    RenameComponent(serializedFeature);
+                    m_IsRenaming = -1;
+                }
+                if (GUI.GetNameOfFocusedControl() != RenameControl)
+                {
+                    Debug.Log("Lost focus");
+                }
+            }
+            else
+            {
+                displayContent = CoreEditorUtils.DrawHeaderToggle(
+                    ObjectNames.GetInspectorTitle(obj),
+                    prop,
+                    enabled,
+                    pos => OnContextClick(pos, index)
+                );
+            }
+            //ObjectEditor
+            if (displayContent)
             {
                 editor.DrawDefaultInspector();
             }
-            //EditorGUI.PropertyField(enabledRect, enabled, GUIContent.none);
-            //m_Foldouts[index].value = EditorGUI.Foldout(headerRect, m_Foldouts[index].value, GUIContent.none);
-            //EditorGUI.LabelField(nameRect, $"{obj.name} ({obj.GetType().Name})", EditorStyles.boldLabel);
-            //EditorGUILayout.EndHorizontal();
 
-            serializedFeature.ApplyModifiedProperties();
-            EditorUtility.SetDirty(obj);
+            if (serializedFeature.hasModifiedProperties)
+            {
+                serializedFeature.ApplyModifiedProperties();
+                EditorUtility.SetDirty(obj);
+            }
+        }
 
+        private void OnContextClick(Vector2 position, int id)
+        {
+            var menu = new GenericMenu();
+
+            if (id == 0)
+                menu.AddDisabledItem(EditorGUIUtility.TrTextContent("Move Up"));
+            else
+                menu.AddItem(EditorGUIUtility.TrTextContent("Move Up"), false, () => MoveComponent(id, -1));
+
+            if (id == m_RenderPasses.arraySize - 1)
+                menu.AddDisabledItem(EditorGUIUtility.TrTextContent("Move Down"));
+            else
+                menu.AddItem(EditorGUIUtility.TrTextContent("Move Down"), false, () => MoveComponent(id, 1));
+
+            menu.AddSeparator(string.Empty);
+            menu.AddItem(EditorGUIUtility.TrTextContent("Rename"), false, () => { m_IsRenaming = id; });
+
+            menu.AddSeparator(string.Empty);
+            menu.AddItem(EditorGUIUtility.TrTextContent("Remove"), false, () => RemoveComponent(id));
+
+            menu.DropDown(new Rect(position, Vector2.zero));
         }
 
         private void CreateFoldoutBools()
@@ -238,72 +166,87 @@ namespace UnityEditor.Rendering.Universal
             }
         }
 
-        private void AddPass(ReorderableList list)
+        internal void RenameComponent(SerializedObject obj)
+        {
+            obj.Update();
+            Debug.Log("Renaming");
+            if (EditorUtility.IsPersistent(obj.targetObject))
+            {
+                EditorUtility.SetDirty(obj.targetObject);
+                AssetDatabase.SaveAssets();
+            }
+            obj.ApplyModifiedProperties();
+        }
+
+        internal void AddComponent(object type)
+        {
+            serializedObject.Update();
+
+            var component = CreateInstance((string)type);
+            component.name = $"New{(string)type}";
+            Undo.RegisterCreatedObjectUndo(component, "Add Renderer Feature");
+
+            // Store this new effect as a subasset so we can reference it safely afterwards
+            // Only when we're not dealing with an instantiated asset
+            if (EditorUtility.IsPersistent(target))
+                AssetDatabase.AddObjectToAsset(component, target);
+
+            // Grow the list first, then add - that's how serialized lists work in Unity
+            m_RenderPasses.arraySize++;
+            var componentProp = m_RenderPasses.GetArrayElementAtIndex(m_RenderPasses.arraySize - 1);
+            componentProp.objectReferenceValue = component;
+
+            // Force save / refresh
+            if (EditorUtility.IsPersistent(target))
+            {
+                EditorUtility.SetDirty(target);
+                AssetDatabase.SaveAssets();
+            }
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private void AddPass()
         {
             var menu = new GenericMenu();
-
-#if UNITY_2019_2_OR_NEWER
             var types = TypeCache.GetTypesDerivedFrom<ScriptableRendererFeature>();
             foreach (Type type in types)
             {
                 string path = GetMenuNameFromType(type);
-                menu.AddItem(new GUIContent(path), false, AddPassHandler, type.Name);
+                menu.AddItem(new GUIContent(path), false, AddComponent, type.Name);
             }
-#else
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (Assembly assembly in assemblies)
-            {
-                Type[] types;
-                try
-                {
-                    types = assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException e)
-                {
-                    types = e.Types;
-                }
-                foreach (Type type in types.Where(t => t != null))
-                {
-                    if (type.IsSubclassOf(typeof(ScriptableRendererFeature)))
-                    {
-                        string path = GetMenuNameFromType(type);
-                        menu.AddItem(new GUIContent(path), false, AddPassHandler, type.Name);
-                    }
-                }
-            }
-#endif
             menu.ShowAsContext();
         }
 
-        private void RemovePass(ReorderableList list)
+        internal void RemoveComponent(int id)
         {
-            var obj = m_RenderPasses.GetArrayElementAtIndex(list.index).objectReferenceValue;
-            if (obj != null)
-            {
-                Undo.IncrementCurrentGroup();
-                Undo.SetCurrentGroupName($"Delete {obj.name}");
-                var groupIndex = Undo.GetCurrentGroup();
-                AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
-                ReorderableList.defaultBehaviours.DoRemoveButton(list);
-                m_RenderPasses.DeleteArrayElementAtIndex(list.index);
-                m_RenderPasses.serializedObject.ApplyModifiedProperties();
-                m_ElementSOs.Clear();
+            var property = m_RenderPasses.GetArrayElementAtIndex(id);
+            var component = property.objectReferenceValue;
+            property.objectReferenceValue = null;
 
-                Undo.DestroyObjectImmediate(obj);
-                Undo.CollapseUndoOperations(groupIndex);
-            }
+            // remove the array index itself from the list
+            m_RenderPasses.DeleteArrayElementAtIndex(id);
+            serializedObject.ApplyModifiedProperties();
+
+            // Destroy the setting object after ApplyModifiedProperties(). If we do it before, redo
+            // actions will be in the wrong order and the reference to the setting object in the
+            // list will be lost.
+            Undo.SetCurrentGroupName($"Delete {component.name}");
+            Undo.DestroyObjectImmediate(component);
+
+            // Force save / refresh
+            EditorUtility.SetDirty(target);
+            AssetDatabase.SaveAssets();
         }
 
-        private void ReorderPass(ReorderableList list, int oldIndex, int newIndex)
+        internal void MoveComponent(int id, int offset)
         {
-            var item = m_ElementSOs[oldIndex];
-            m_ElementSOs.RemoveAt(oldIndex);
-            m_ElementSOs.Insert(newIndex, item);
-
-            var oldHeaderState = m_Foldouts[oldIndex].value;
-            var newHeaderState = m_Foldouts[newIndex].value;
-            m_Foldouts[oldIndex].value = newHeaderState;
-            m_Foldouts[newIndex].value = oldHeaderState;
+            Undo.SetCurrentGroupName($"Move Render Feature");
+            serializedObject.Update();
+            m_RenderPasses.MoveArrayElement(id, id + offset);
+            serializedObject.ApplyModifiedProperties();
+            // Force save / refresh
+            EditorUtility.SetDirty(target);
+            AssetDatabase.SaveAssets();
         }
 
         private string GetMenuNameFromType(Type type)
@@ -324,36 +267,6 @@ namespace UnityEditor.Rendering.Universal
         {
             name = Regex.Replace(name, @"[^a-zA-Z0-9 ]", "");
             return name;
-        }
-
-        private void AddPassHandler(object pass)
-        {
-            m_RenderPasses.serializedObject.ApplyModifiedProperties();
-
-            if (m_PassesList.serializedProperty != null)
-            {
-                Undo.SetCurrentGroupName($"Adding {(string)pass}");
-                var groupIndex = Undo.GetCurrentGroup();
-
-                var asset = AssetDatabase.GetAssetPath(target);
-                var obj = CreateInstance((string)pass);
-                obj.name = $"New{obj.GetType().Name}";
-                AssetDatabase.AddObjectToAsset(obj, asset);
-                Undo.RegisterCreatedObjectUndo(obj, obj.name);
-
-                ++m_PassesList.serializedProperty.arraySize;
-                m_PassesList.index = m_PassesList.serializedProperty.arraySize - 1;
-                m_PassesList.serializedProperty.serializedObject.ApplyModifiedProperties();
-                m_PassesList.serializedProperty.GetArrayElementAtIndex(m_PassesList.index).objectReferenceValue = obj;
-                m_PassesList.serializedProperty.serializedObject.ApplyModifiedProperties();
-                AssetDatabase.ImportAsset(asset);
-
-                Undo.CollapseUndoOperations(groupIndex);
-            }
-            m_ElementSOs.Clear();
-            GetElementSO(m_PassesList.index);
-            CreateFoldoutBools();
-            EditorUtility.SetDirty(m_RenderPasses.serializedObject.targetObject);
         }
     }
 }

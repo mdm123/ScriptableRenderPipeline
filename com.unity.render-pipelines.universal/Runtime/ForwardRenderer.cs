@@ -130,7 +130,7 @@ namespace UnityEngine.Rendering.Universal
 
                 for (int i = 0; i < rendererFeatures.Count; ++i)
                 {
-                    if(rendererFeatures[i].m_Enabled)
+                    if(rendererFeatures[i].enabled)
                         rendererFeatures[i].AddRenderPasses(this, ref renderingData);
                 }
 
@@ -206,7 +206,7 @@ namespace UnityEngine.Rendering.Universal
 
             for (int i = 0; i < rendererFeatures.Count; ++i)
             {
-                if(rendererFeatures[i].m_Enabled)
+                if(rendererFeatures[i].enabled)
                     rendererFeatures[i].AddRenderPasses(this, ref renderingData);
             }
 

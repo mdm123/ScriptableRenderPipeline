@@ -7,9 +7,10 @@ namespace UnityEngine.Rendering.Universal
     /// </summary>
     /// <seealso cref="ScriptableRenderer"/>
     /// <seealso cref="ScriptableRenderPass"/>
+    [ExcludeFromPreset]
     [MovedFrom("UnityEngine.Rendering.LWRP")] public abstract class ScriptableRendererFeature : ScriptableObject
     {
-        public bool m_Enabled = true;
+        [SerializeField, HideInInspector] protected internal bool enabled = true;
         /// <summary>
         /// Initializes this feature's resources. This is called every time serialization happens.
         /// </summary>
