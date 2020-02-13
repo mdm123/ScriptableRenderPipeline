@@ -202,7 +202,10 @@ namespace UnityEditor.Rendering.HighDefinition
                 Editor.CreateCachedEditor(asset,
                     Type.GetType("UnityEditor.Rendering.VolumeProfileEditor"), ref m_Cached);
                 EditorGUIUtility.labelWidth -= 18;
+                bool oldEnabled = GUI.enabled;
+                GUI.enabled = AssetDatabase.IsOpenForEdit(asset);
                 m_Cached.OnInspectorGUI();
+                GUI.enabled = oldEnabled;
                 EditorGUIUtility.labelWidth = oldWidth;
 
                 EditorGUILayout.Space();
