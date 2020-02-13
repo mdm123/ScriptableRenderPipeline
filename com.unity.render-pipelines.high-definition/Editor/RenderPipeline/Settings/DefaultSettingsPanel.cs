@@ -40,7 +40,8 @@ namespace UnityEditor.Rendering.HighDefinition
             }
 
             Vector2 m_ScrollViewPosition = Vector2.zero;
-            Editor m_Cached;
+            Editor m_CachedDefaultVolumeProfileEditor;
+            Editor m_CachedLookDevVolumeProfileEditor;
             ReorderableList m_BeforeTransparentCustomPostProcesses;
             ReorderableList m_BeforePostProcessCustomPostProcesses;
             ReorderableList m_AfterPostProcessCustomPostProcesses;
@@ -199,12 +200,11 @@ namespace UnityEditor.Rendering.HighDefinition
                     EditorUtility.SetDirty(hdrpAsset);
                 }
 
-                Editor.CreateCachedEditor(asset,
-                    Type.GetType("UnityEditor.Rendering.VolumeProfileEditor"), ref m_Cached);
+                Editor.CreateCachedEditor(asset, Type.GetType("UnityEditor.Rendering.VolumeProfileEditor"), ref m_CachedDefaultVolumeProfileEditor);
                 EditorGUIUtility.labelWidth -= 18;
                 bool oldEnabled = GUI.enabled;
                 GUI.enabled = AssetDatabase.IsOpenForEdit(asset);
-                m_Cached.OnInspectorGUI();
+                m_CachedDefaultVolumeProfileEditor.OnInspectorGUI();
                 GUI.enabled = oldEnabled;
                 EditorGUIUtility.labelWidth = oldWidth;
 
@@ -222,6 +222,14 @@ namespace UnityEditor.Rendering.HighDefinition
                     hdrpAsset.defaultLookDevProfile = newLookDevAsset;
                     EditorUtility.SetDirty(hdrpAsset);
                 }
+                
+                Editor.CreateCachedEditor(lookDevAsset, Type.GetType("UnityEditor.Rendering.VolumeProfileEditor"), ref m_CachedLookDevVolumeProfileEditor);
+                EditorGUIUtility.labelWidth -= 18;
+                oldEnabled = GUI.enabled;
+                GUI.enabled = AssetDatabase.IsOpenForEdit(asset);
+                m_CachedLookDevVolumeProfileEditor.OnInspectorGUI();
+                GUI.enabled = oldEnabled;
+                EditorGUIUtility.labelWidth = oldWidth;
 
                 if (lookDevAsset.Has<VisualEnvironment>())
                     EditorGUILayout.HelpBox("VisualEnvironment is not modifiable and will be overridden by the LookDev", MessageType.Warning);
