@@ -154,15 +154,15 @@ namespace UnityEngine.Rendering.Universal
                 {
                     var settings = UniversalRenderPipelineEditorResources.getSerializedObject();
 
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.lit"), RenderPipelineAsset.DefaultMaterialImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.lit"), "DefaultMaterialImportDependency");
                     EditorGUILayout.PropertyField(settings.FindProperty("materials.particleLit"));
 
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.defaultSpeedTree7PS"), RenderPipelineAsset.SpeedTree7ShaderImportDependency);
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.defaultSpeedTree8PS"), RenderPipelineAsset.SpeedTree8ShaderImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.defaultSpeedTree7PS"), "SpeedTree7ShaderImportDependency");
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.defaultSpeedTree8PS"), "SpeedTree8ShaderImportDependency");
 
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractivePS"), RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency);
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractiveTransparentPS"), RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency);
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractiveMaskedPS"), RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractivePS"), "AutodeskInteractiveMaterialImportDependency");
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractiveTransparentPS"), "AutodeskInteractiveTransparentMaterialImportDependency");
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaders.autodeskInteractiveMaskedPS"), "AutodeskInteractiveMaskedMaterialImportDependency");
 
                     if (settings.hasModifiedProperties)
                     {
