@@ -104,6 +104,12 @@ To make this section visible, disable **Earth Preset**.
 
 This sky type is a practical implementation of the method outlined in the paper [Precomputed Atmospheric Scattering](http://www-ljk.imag.fr/Publications/Basilic/com.lmc.publi.PUBLI_Article@11e7cdda2f7_f64b69/article.pdf) (Bruneton and Neyret, 2008).
 
+This technique assumes that you always view the Scene from above ground level. This means that if you go below ground level, the sky renders black. By default, ground level is at **0** on the y-axis. If you want some areas of your Scene environment to be below this, you can either vertically offset your Scene environment so that the lowest areas are above **0** on the y-axis, or decrease the ground level height. To do the latter:
+
+* If in **Spherical Mode**, either decrease the **Planetary  Radius**, or move the **Planet Center Position** down.
+
+* If not in **Spherical Mode**, decrease the **Sea Level**.
+
 ### Reference list
 
 * Bruneton, Eric, and Fabrice Neyret. 2008. “Precomputed Atmospheric Scattering.” *Computer Graphics Forum* 27, no. 4 (2008): 1079–86. https://doi.org/10.1111/j.1467-8659.2008.01245.x.
