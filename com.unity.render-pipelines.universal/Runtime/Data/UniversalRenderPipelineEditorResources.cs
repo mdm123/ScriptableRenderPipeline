@@ -44,6 +44,7 @@ namespace UnityEngine.Rendering.Universal
         [Serializable]
         public sealed class MaterialResources
         {
+
             public Material lit;
 
             public Material particleLit;
@@ -95,12 +96,19 @@ namespace UnityEngine.Rendering.Universal
                     //Was removed from package or other error, generate one from scratch ??
                 }
 
-                UpdateImportDependency(RenderPipelineAsset.DefaultMaterialImportDependency, Instance.materials.lit);
-                UpdateImportDependency(RenderPipelineAsset.SpeedTree7ShaderImportDependency, Instance.shaders.defaultSpeedTree7PS);
-                UpdateImportDependency(RenderPipelineAsset.SpeedTree8ShaderImportDependency, Instance.shaders.defaultSpeedTree8PS);
-                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency, Instance.shaders.autodeskInteractivePS);
-                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency, Instance.shaders.autodeskInteractiveMaskedPS);
-                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency, Instance.shaders.autodeskInteractiveTransparentPS);
+                //UpdateImportDependency(RenderPipelineAsset.DefaultMaterialImportDependency, Instance.materials.lit);
+                //UpdateImportDependency(RenderPipelineAsset.SpeedTree7ShaderImportDependency, Instance.shaders.defaultSpeedTree7PS);
+                //UpdateImportDependency(RenderPipelineAsset.SpeedTree8ShaderImportDependency, Instance.shaders.defaultSpeedTree8PS);
+                //UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency, Instance.shaders.autodeskInteractivePS);
+                //UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency, Instance.shaders.autodeskInteractiveMaskedPS);
+                //UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency, Instance.shaders.autodeskInteractiveTransparentPS);
+
+                UpdateImportDependency("DefaultMaterialImportDependency", Instance.materials.lit);
+                UpdateImportDependency("SpeedTree7ShaderImportDependency", Instance.shaders.defaultSpeedTree7PS);
+                UpdateImportDependency("SpeedTree8ShaderImportDependency", Instance.shaders.defaultSpeedTree8PS);
+                UpdateImportDependency("AutodeskInteractiveMaterialImportDependency", Instance.shaders.autodeskInteractivePS);
+                UpdateImportDependency("AutodeskInteractiveMaskedMaterialImportDependency", Instance.shaders.autodeskInteractiveMaskedPS);
+                UpdateImportDependency("AutodeskInteractiveTransparentMaterialImportDependency", Instance.shaders.autodeskInteractiveTransparentPS);
             }
             
             return Instance;

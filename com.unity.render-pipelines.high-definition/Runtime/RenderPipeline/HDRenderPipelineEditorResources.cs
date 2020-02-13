@@ -119,15 +119,21 @@ namespace UnityEngine.Rendering.HighDefinition
                 else
                 {
                     //Was removed from package or other error, generate one from scratch ??
+                    _instance = new HDRenderPipelineEditorResources();
                 }
 
-                UpdateImportDependency(RenderPipelineAsset.DefaultMaterialImportDependency, _instance.materials.defaultDiffuseMat);
-                // No SpeedTree shader in HDRP ?
-                //UpdateImportDependency(RenderPipelineAsset.SpeedTree7ShaderImportDependency, _instance.shaders.defaultSpeedTree7PS);
-                //UpdateImportDependency(RenderPipelineAsset.SpeedTree8ShaderImportDependency, _instance.shaders.defaultSpeedTree8PS);
-                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency, _instance.shaderGraphs.autodeskInteractive);
-                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency, _instance.shaderGraphs.autodeskInteractiveMasked);
-                UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency, _instance.shaderGraphs.autodeskInteractiveTransparent);
+                UpdateImportDependency("DefaultMaterialImportDependency", _instance.materials.defaultDiffuseMat);
+                UpdateImportDependency("AutodeskInteractiveMaterialImportDependency", _instance.shaderGraphs.autodeskInteractive);
+                UpdateImportDependency("AutodeskInteractiveMaskedMaterialImportDependency", _instance.shaderGraphs.autodeskInteractiveMasked);
+                UpdateImportDependency("AutodeskInteractiveTransparentMaterialImportDependency", _instance.shaderGraphs.autodeskInteractiveTransparent);
+
+                //UpdateImportDependency(RenderPipelineAsset.DefaultMaterialImportDependency, _instance.materials.defaultDiffuseMat);
+                //// No SpeedTree shader in HDRP ?
+                ////UpdateImportDependency(RenderPipelineAsset.SpeedTree7ShaderImportDependency, _instance.shaders.defaultSpeedTree7PS);
+                ////UpdateImportDependency(RenderPipelineAsset.SpeedTree8ShaderImportDependency, _instance.shaders.defaultSpeedTree8PS);
+                //UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency, _instance.shaderGraphs.autodeskInteractive);
+                //UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency, _instance.shaderGraphs.autodeskInteractiveMasked);
+                //UpdateImportDependency(RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency, _instance.shaderGraphs.autodeskInteractiveTransparent);
             }
 
             return _instance;
@@ -169,18 +175,17 @@ namespace UnityEngine.Rendering.HighDefinition
             var provider = new SettingsProvider("Project/HDRP", SettingsScope.Project)
             {
                 label = "HDRP Editor Resources",
-                // Create the SettingsProvider and initialize its drawing (IMGUI) function in place:
                 guiHandler = (searchContext) =>
                 {
                     var settings = HDRenderPipelineEditorResources.getSerializedObject();
 
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.defaultDiffuseMat"), RenderPipelineAsset.DefaultMaterialImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.defaultDiffuseMat"), "DefaultMaterialImportDependency");
 
                     EditorGUILayout.PropertyField(settings.FindProperty("materials.defaultParticleMat"));
 
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.autodeskInteractive"), RenderPipelineAsset.AutodeskInteractiveMaterialImportDependency);
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.autodeskInteractiveTransparent"), RenderPipelineAsset.AutodeskInteractiveTransparentMaterialImportDependency);
-                    DrawObjectPropertyWithImportDependency(settings.FindProperty("materials.autodeskInteractiveMasked"), RenderPipelineAsset.AutodeskInteractiveMaskedMaterialImportDependency);
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaderGraphs.autodeskInteractive"), "AutodeskInteractiveMaterialImportDependency");
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaderGraphs.autodeskInteractiveTransparent"), "AutodeskInteractiveTransparentMaterialImportDependency");
+                    DrawObjectPropertyWithImportDependency(settings.FindProperty("shaderGraphs.autodeskInteractiveMasked"), "AutodeskInteractiveMaskedMaterialImportDependency");
                     // And so on...
 
                     if (settings.hasModifiedProperties)
