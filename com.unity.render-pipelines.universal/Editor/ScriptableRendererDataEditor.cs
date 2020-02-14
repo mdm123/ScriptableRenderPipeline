@@ -1,9 +1,9 @@
 using System;
-using System.IO;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using System.Text.RegularExpressions;
 using UnityEngine.Scripting.APIUpdating;
+using UnityEngine.UIElements;
 
 namespace UnityEditor.Rendering.Universal
 {
@@ -28,10 +28,9 @@ namespace UnityEditor.Rendering.Universal
             }
         }
 
-        SavedBool[] m_Foldouts;
-        private int m_IsRenaming = -1;
-        private const string RenameControl = "render_feature_rename";
-        SerializedProperty m_RenderPasses;
+        private SavedBool[] m_Foldouts;
+        private bool m_MissingRenderers;
+        private SerializedProperty m_RenderPasses;
 
         private void OnEnable()
         {
@@ -58,23 +57,37 @@ namespace UnityEditor.Rendering.Universal
             EditorGUILayout.LabelField(Styles.RenderFeatures, EditorStyles.boldLabel);
             EditorGUILayout.Space();
 
-            //Draw List
-            CoreEditorUtils.DrawSplitter();
-            for (int i = 0; i < m_RenderPasses.arraySize; i++)
+            if (m_RenderPasses.arraySize == 0)
             {
-                var prop = m_RenderPasses.GetArrayElementAtIndex(i);
-                DrawRendererFeature(i, ref prop);
+                EditorGUILayout.HelpBox("No Renderer Features added", MessageType.Info);
+            }
+            else
+            {
+                //Draw List
                 CoreEditorUtils.DrawSplitter();
+                for (int i = 0; i < m_RenderPasses.arraySize; i++)
+                {
+                    var prop = m_RenderPasses.GetArrayElementAtIndex(i);
+                    DrawRendererFeature(i, ref prop);
+                    CoreEditorUtils.DrawSplitter();
+                }
             }
             EditorGUILayout.Space();
 
             //Add renderer
-            using (var hscope = new EditorGUILayout.HorizontalScope())
+            if (GUILayout.Button("Add Renderer Feature", EditorStyles.miniButton))
             {
-                if (GUILayout.Button("Add Renderer Feature", EditorStyles.miniButton))
-                {
-                    AddPass();
-                }
+                AddPass();
+            }
+
+
+            //Fix Renderers
+            if (m_MissingRenderers)
+            {
+                EditorGUILayout.HelpBox("You have missing RendererFeature references, we can attempt to fix these or you can choose to do it manually via the Debug Inspector.", MessageType.Error);
+                if (!GUILayout.Button("Fix Renderer Features", EditorStyles.miniButton)) return;
+                var data = target as ScriptableRendererData;
+                data.ValidateRendererFeatures();
             }
         }
 
@@ -83,56 +96,40 @@ namespace UnityEditor.Rendering.Universal
             var obj = prop.objectReferenceValue;
             if (obj == null)
             {
-                EditorGUILayout.LabelField("Missing");
+                EditorGUILayout.LabelField("Missing Render Feature");
+                m_MissingRenderers = true;
                 return;
             }
 
             var serializedFeature = new SerializedObject(obj);
             var enabled = serializedFeature.FindProperty("enabled");
+            var title = ObjectNames.GetInspectorTitle(obj);
 
-            Editor editor = CreateEditor(obj);
-            var displayContent = prop.isExpanded;
 
-            if (m_IsRenaming == index)
-            {
-                EditorGUI.BeginChangeCheck();
-                GUI.SetNextControlName(RenameControl);
-                var newName = EditorGUI.DelayedTextField(EditorGUILayout.GetControlRect(), obj.name);
-                if (EditorGUI.EndChangeCheck())
-                {
-                    Undo.RecordObject(obj, "Rename Render Feature");
-                    obj.name = ValidatePassName(newName);
-                    RenameComponent(serializedFeature);
-                    m_IsRenaming = -1;
-                }
-                if (GUI.GetNameOfFocusedControl() != RenameControl)
-                {
-                    Debug.Log("Lost focus");
-                }
-            }
-            else
-            {
-                displayContent = CoreEditorUtils.DrawHeaderToggle(
-                    ObjectNames.GetInspectorTitle(obj),
-                    prop,
-                    enabled,
-                    pos => OnContextClick(pos, index)
-                );
-            }
-            //ObjectEditor
+            var editor = CreateEditor(obj);
+            var displayContent = CoreEditorUtils.DrawHeaderToggle(
+                title,
+                prop,
+                enabled,
+                pos => OnContextClick(pos, serializedFeature, index)
+            );
+            // ObjectEditor
             if (displayContent)
             {
-                editor.DrawDefaultInspector();
+                EditorGUILayout.DelayedTextField(serializedFeature.FindProperty("m_Name"));
+                editor.OnInspectorGUI();
+                //editor.DrawDefaultInspector();
             }
 
-            if (serializedFeature.hasModifiedProperties)
-            {
-                serializedFeature.ApplyModifiedProperties();
-                EditorUtility.SetDirty(obj);
-            }
+            //Save the changed data
+            if (!serializedFeature.hasModifiedProperties) return;
+
+            serializedFeature.ApplyModifiedProperties();
+            EditorUtility.SetDirty(obj);
+            AssetDatabase.SaveAssets();
         }
 
-        private void OnContextClick(Vector2 position, int id)
+        private void OnContextClick(Vector2 position, SerializedObject obj, int id)
         {
             var menu = new GenericMenu();
 
@@ -145,9 +142,6 @@ namespace UnityEditor.Rendering.Universal
                 menu.AddDisabledItem(EditorGUIUtility.TrTextContent("Move Down"));
             else
                 menu.AddItem(EditorGUIUtility.TrTextContent("Move Down"), false, () => MoveComponent(id, 1));
-
-            menu.AddSeparator(string.Empty);
-            menu.AddItem(EditorGUIUtility.TrTextContent("Rename"), false, () => { m_IsRenaming = id; });
 
             menu.AddSeparator(string.Empty);
             menu.AddItem(EditorGUIUtility.TrTextContent("Remove"), false, () => RemoveComponent(id));
@@ -166,18 +160,6 @@ namespace UnityEditor.Rendering.Universal
             }
         }
 
-        internal void RenameComponent(SerializedObject obj)
-        {
-            obj.Update();
-            Debug.Log("Renaming");
-            if (EditorUtility.IsPersistent(obj.targetObject))
-            {
-                EditorUtility.SetDirty(obj.targetObject);
-                AssetDatabase.SaveAssets();
-            }
-            obj.ApplyModifiedProperties();
-        }
-
         internal void AddComponent(object type)
         {
             serializedObject.Update();
@@ -190,11 +172,14 @@ namespace UnityEditor.Rendering.Universal
             // Only when we're not dealing with an instantiated asset
             if (EditorUtility.IsPersistent(target))
                 AssetDatabase.AddObjectToAsset(component, target);
+            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(component, out var guid, out long localId);
+            Debug.Log($"new feature | guid={guid} | localID={localId}");
 
             // Grow the list first, then add - that's how serialized lists work in Unity
             m_RenderPasses.arraySize++;
             var componentProp = m_RenderPasses.GetArrayElementAtIndex(m_RenderPasses.arraySize - 1);
             componentProp.objectReferenceValue = component;
+            serializedObject.ApplyModifiedProperties();
 
             // Force save / refresh
             if (EditorUtility.IsPersistent(target))
@@ -263,7 +248,7 @@ namespace UnityEditor.Rendering.Universal
                 "([A-Z])([A-Z][a-z])", "$1 $2", RegexOptions.Compiled);
         }
 
-        private string ValidatePassName(string name)
+        private string ValidateName(string name)
         {
             name = Regex.Replace(name, @"[^a-zA-Z0-9 ]", "");
             return name;
