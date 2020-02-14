@@ -145,7 +145,7 @@ namespace UnityEngine.Rendering.Universal
             for (int i = 0; i < rendererFeatures.Count; i++)
             {
                 AssetDatabase.TryGetGUIDAndLocalFileIdentifier(m_RendererFeatures[i], out var guid, out long localId);
-                m_RendererFeatureMap[i] = guid;
+                m_RendererFeatureMap.Add(guid);
             }
         }
 #endif
