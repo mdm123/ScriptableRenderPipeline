@@ -1,88 +1,128 @@
 <div style="border: solid 1px #999; border-radius:12px; background-color:#EEE; padding: 8px; padding-left:14px; color: #555; font-size:14px;"><b>Draft:</b> The content on this page is complete, but it has not been reviewed yet.</div>
-# Visual Effect Component API
 
- [Visual Effect Graphs](VisualEffectGraphAsset.md) are instantiated into scenes using the [Visual Effect Component](VisualEffectComponent.md) . This allows using different instances of effects that you can control independently,  make variations using Property overrides, and control the effect through a C# API. 
+# Visual Effect component API
 
-This document present common use cases and good practices in order to use the [Component API](https://docs.unity3d.com/2019.3/Documentation/ScriptReference/VFX.VisualEffect.html).
+To create an instance of a [Visual Effect Graph Asset](VisualEffectGraphAsset.md) in a Scene, Unity uses the [Visual Effect component](VisualEffectComponent.md). The Visual Effect component attaches to GameObjects in your Scene and references a Visual Effect Graph Asset that defines the visual effect. This allows you to create different instances of effects at various positions and orientations, and control each effect independently. To control an effect at runtime, Unity provides C# API that you can use to modify the component and set [Property](Properties.md) overrides. 
+
+This document presents common use cases and describes good practices to consider when you use the [component API](https://docs.unity3d.com/Documentation/ScriptReference/VFX.VisualEffect.html).
 
 ## Setting a Visual Effect Graph
 
-The [Visual Effect Graph](VisualEffectGraphAsset.md) template can be changed at runtime using the `effect.visualEffectAsset ` property.
+To change the [Visual Effect Graph Asset](VisualEffectGraphAsset.md) at runtime, you can use the `effect.visualEffectAsset ` property. When you change the Visual Effect Graph Asset, this resets the value of certain properties on the component.
 
-<u>Changing the Visual Effect Graph Asset will also reset the component:</u>
+The values that reset are:
 
-* Total Time is reset to 0.0 due to `Reset()` being called.
-* Event Attributes are discarded.
+* **Total Time**: When you change the graph, the API calls the `Reset()` function which sets this value to 0.0f.
+* **Event Attributes**: The component discards all Event [Attribues](Attributes.md).
 
-<u>Some values are **not reset** while changing graphs:</u>
+The values that do **not** reset are:
 
-* Exposed Property Overrides (if new Graph Exposes properties of same name and type)
-* Random Seed and Reset Seed On Play Value
-* Default Event Override
-* Rendering Settings overrides.
+* **Exposed Property Overrides**: If the new Visual Effect Graph Asset exposes a property that has the same name and type as a property from the previous Asset, the value for this property does not reset.
+* **Random Seed** and **Reset Seed On Play Value**.
+* **Default Event Override**.
+* **Rendering Settings overrides**.
 
-## Controlling Play State
+## Controlling play state
 
-### Common Controls
+You can use the API to control effect playback.
 
-Effect playback can be controlled using the API using the following:
+### Common controls
 
-* Play : `effect.Play()` or `effect.Play(eventAttribute)` if needing Event Attributes.
-* Stop : `effect.Stop()` or `effect.Stop(eventAttribute)` if needing Event Attributes.
-* Pause : `effect.pause = true` or  `effect.pause = false`  (not serialized)
-* Step : `effect.AdvanceOneFrame()` (only if `effect.pause == true`)
-* Reset Effect : `effect.Reinit()` this also :
-  * Resets TotalTime to 0.0
-  * Sends again the **Default Event**
-* Setting **Play Rate** : `effect.playRate = value` (not serialized)
+* **Play** : `effect.Play()` or `effect.Play(eventAttribute)` if needing Event Attributes.
+* **Stop** : `effect.Stop()` or `effect.Stop(eventAttribute)` if needing Event Attributes.
+* **Pause** : `effect.pause = true` or  `effect.pause = false`. Unity does not serialize this change.
+* **Step** : `effect.AdvanceOneFrame()`. This only works if `effect.pause` is set to `true`.
+* **Reset Effect** : `effect.Reinit()` this also :
+  * Resets `TotalTime` to 0.0f.
+  * Re-sends the **Default Event** to the Visual Effect Graph Asset.
+* **Play Rate** : `effect.playRate = value`. Unity does not serialize this change.
 
 ### Default Event
 
-Upon enabling the GameObject, or the Component, a default event is sent to the graph : by default it is `OnPlay` which is the implicit Start of [Spawn Contexts](Contexts.md#spawn).
+When the Visual Effect component (or the GameObject it attaches to) enables, it sends an [Event](Events.md) to the graph. By default, this Event is `OnPlay` which is the standard start for [Spawn Contexts](Contexts.md#spawn).
 
-You can override this property:
+You can change the default Event in the following ways:
 
-* on the [Visual Effect Inspector](VisualEffectComponent.md) using the **Initial Event Name** field.
-* using the API : `initialEventName = "MyEventName"`
-* using the API : `initialEventID = Shader.PropertyToID("MyEventName")`; 
-* using the [ExposedProperty Helper Class](ExposedPropertyHelper.md) 
+* On the [Visual Effect Inspector](VisualEffectComponent.md), change the **Initial Event Name** field.
+* In the component API : `initialEventName = "MyEventName";`.
+* In the component API : `initialEventID = Shader.PropertyToID("MyEventName";`.
+* Using the [ExposedProperty Helper Class](ExposedPropertyHelper.md).
 
 ## Random Seed Control
 
-Every instance has settings and controls about random seed and behavior when playing:
+Every effect instance has settings and controls for its random seed. You can modify the seed to influence the random values the Visual Effect Graph Asset uses.
 
-* `resetSeedOnPlay = true/false` : Controls whether a new random seed is computed every time the `Play()` function is called : Which cause each random value used by the graph to be different.
-* `startSeed = intSeed` Sets manually the Random Number Generator Seed used for this Visual Effect Instance. (Ignored if `resetSeedOnPlay == true`)
+* `resetSeedOnPlay = true/false`: Controls whether Unity computes a new random seed every time you call the `Play()` function. This causes each random value the Visual Effect Graph Asset uses to be different to what it was in previous simulations.
+* `startSeed = intSeed`: Sets a manual seed that the **Random Number** Operator uses to create random values for this Visual Effect. Unity ignores this value if `resetSeedOnPlay` is set to `true`.
 
 ## Property Interface
 
-Exposed Properties state and values can be accessed using a variety of methods on the [Visual Effect Component](VisualEffectComponent.md) . Most of the API methods allow access to the property via:
+To access the state and values of Exposed Properties, you can use multiple methods in the [Visual Effect component](VisualEffectComponent.md). Most of the API methods allow access to the property via the following methods:
 
-* a `string` property Name : easy to use but less optimized.
-* a `int` property ID that can be generated and cached using `Shader.PropertyToID(string name)`
-* using the [ExposedProperty Helper Class](ExposedPropertyHelper.md) 
+* A `string` property name. This is easy to use, but is the least optimized method.
+* An `int` property ID. To generate this ID from a string property name, you can use `Shader.PropertyToID(string name)`. This is the most optimized method.
+* The [ExposedProperty Helper Class](ExposedPropertyHelper.md). This combines the ease of use the string property name provides with the efficiency of the integer property ID.
 
-#### Checking Properties
+#### Checking for exposed properties
 
-You can check if the Visual Effect Component's Graph Asset exposes a specific property using a set of methods depending on the property type you want to check : `HasInt(property)`,  `HasUInt(property)`,`HasBool(property)`, `HasFloat(property)`, `HasVector2(property)`, `HasVector3(property)`, `HasVector4(property)`, `HasGradient(property)`,  `HasAnimationCurve(property)`, `HasMesh(property)`, `HasTexture(property)`, `HasMatrix4x4(property)`
+You can check if the component's Visual Effect Graph Asset contains a specific exposed property. To do this, you can use the method from the following group that corresponds to the property's type:
 
-Every Has method will return true if an Exposed property of the same name or ID has been found.
+* `HasInt(property)`
+* `HasUInt(property)`
+* `HasBool(property)`
+* `HasFloat(property)`
+* `HasVector2(property)`
+* `HasVector3(property)`
+* `HasVector4(property)`
+* `HasGradient(property)`
+* `HasAnimationCurve(property)`
+* `HasMesh(property)`
+* `HasTexture(property)`
+* `HasMatrix4x4(property)`
 
-#### Getting Values
+For each method, if the Visual Effect Graph Asset contains an exposed property of the correct type with the same name or ID that you pass in, the method returns `true`. Otherwise the methods returns `false`.
 
-You can get an Exposed Property Value using a set of methods depending on the property type: `GetInt(property)`,  `GetUInt(property)`,`GetBool(property)`, `GetFloat(property)`, `GetVector2(property)`, `GetVector3(property)`, `GetVector4(property)`, `GetGradient(property)`, `GetAnimationCurve(property)`, `GetMesh(property)`, `GetTexture(property)`, `GetMatrix4x4(property)`
+#### Getting the values of exposed properties
 
-Every Get method will return the corresponding value or the type's default value if the property is not present.
+The component API allows you to get the value of an exposed property in the component's Visual Effect Graph Asset. To do this, you can use the method from the following group that corresponds to the property's type:
 
-#### Setting Values
+* `GetInt(property)`
+* `GetUInt(property)`
+* `GetBool(property)`
+* `GetFloat(property)`
+* `GetVector2(property)`
+* `GetVector3(property)`
+* `GetVector4(property)`
+* `GetGradient(property)`
+* `GetAnimationCurve(property)`
+* `GetMesh(property)`
+* `GetTexture(property)`
+* `GetMatrix4x4(property)`
 
-You can set an Exposed Property Value using a set of methods depending on the property type: `SetInt(property,value)`,  `SetUInt(property,value)`,`SetBool(property,value)`, `SetFloat(property,value)`, `SetVector2(property,value)`, `SetVector3(property,value)`, `SetVector4(property,value)`, `SetGradient(property,value)`, `SetAnimationCurve(property,value)`, `SetMesh(property,value)`, `SetTexture(property,value)`, `SetMatrix4x4(property,value)`
+For each method, if the Visual Effect Graph Asset contains an exposed property of the correct type with the same name or ID that you pass in, the method returns the property's value. Otherwise the methods return the default value for the property type.
 
-Every Set method will set the corresponding value to the property and will set it as overridden.
+#### Setting the values of exposed properties
 
-#### Resetting Property Overrides and Default Values
+The component API allows you to set the value of an exposed property in the component's Visual Effect Graph Asset. To do this, you can use the method from the following group that corresponds to the property's type:
 
-Resetting Property Overrides on a  [Visual Effect Component](VisualEffectComponent.md) can be achieved using the `ResetOverride(property)`.
+* `SetInt(property,value)`
+* `SetUInt(property,value)`
+* `SetBool(property,value)`
+* `SetFloat(property,value)`
+* `SetVector2(property,value)`
+* `SetVector3(property,value)`
+* `SetVector4(property,value)`
+* `SetGradient(property,value)`
+* `SetAnimationCurve(property,value)`
+* `SetMesh(property,value)`
+* `SetTexture(property,value)`
+* `SetMatrix4x4(property,value)`
+
+Each method overrides the value of the corresponding property with the value that you pass in.
+
+#### Resetting property overrides and default values
+
+The component API allows you to resetting property overrides back to their original values. To do this, use the `ResetOverride(property)` method.
 
 ## Events
 
@@ -129,7 +169,7 @@ The attribute name or ID can be of the following types:
 
 #### Life Cycle and Compatibility
 
-Event Attributes, when created, are compatible with the Visual Effect Graph Asset that is currently set on the Visual Effect Component. This means that you will be able to use the same `VFXEventAttribute` to send events to instances of the graph, as long as you do not change the `visualEffectAsset` property of the Component to another Graph.
+Event Attributes, when created, are compatible with the Visual Effect Graph Asset that is currently set on the Visual Effect component. This means that you will be able to use the same `VFXEventAttribute` to send events to instances of the graph, as long as you do not change the `visualEffectAsset` property of the component to another Graph.
 
 If you manage multiple Visual Effect instances in scene and want to share event payloads, you can cache one VFXEventAttribute and use it on all the instances.
 
