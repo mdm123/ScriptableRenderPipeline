@@ -2,13 +2,13 @@
 
 # Visual Effect component API
 
-To create an instance of a [Visual Effect Graph Asset](VisualEffectGraphAsset.md) in a Scene, Unity uses the [Visual Effect component](VisualEffectComponent.md). The Visual Effect component attaches to GameObjects in your Scene and references a Visual Effect Graph Asset that defines the visual effect. This allows you to create different instances of effects at various positions and orientations, and control each effect independently. To control an effect at runtime, Unity provides C# API that you can use to modify the component and set [Property](Properties.md) overrides. 
+To create an instance of a [Visual Effect Graph](VisualEffectGraphAsset.md) in a Scene, Unity uses the [Visual Effect component](VisualEffectComponent.md). The Visual Effect component attaches to GameObjects in your Scene and references a Visual Effect Graph which defines the visual effect. This allows you to create different instances of effects at various positions and orientations, and control each effect independently. To control an effect at runtime, Unity provides C# API that you can use to modify the Visual Effect component and set [Property](Properties.md) overrides.
 
 This document presents common use cases and describes good practices to consider when you use the [component API](https://docs.unity3d.com/Documentation/ScriptReference/VFX.VisualEffect.html).
 
 ## Setting a Visual Effect Graph
 
-To change the [Visual Effect Graph Asset](VisualEffectGraphAsset.md) at runtime, you can use the `effect.visualEffectAsset ` property. When you change the Visual Effect Graph Asset, this resets the value of certain properties on the component.
+To change the [Visual Effect Graph](VisualEffectGraphAsset.md) at runtime, assign a new Visual Effect Graph Asset to the `effect.visualEffectAsset ` property. When you change the Visual Effect Graph, the component resets the value of some of its properties.
 
 The values that reset are:
 
@@ -34,7 +34,7 @@ You can use the API to control effect playback.
 * **Step** : `effect.AdvanceOneFrame()`. This only works if `effect.pause` is set to `true`.
 * **Reset Effect** : `effect.Reinit()` this also :
   * Resets `TotalTime` to 0.0f.
-  * Re-sends the **Default Event** to the Visual Effect Graph Asset.
+  * Re-sends the **Default Event** to the Visual Effect Graph.
 * **Play Rate** : `effect.playRate = value`. Unity does not serialize this change.
 
 ### Default Event
@@ -48,24 +48,26 @@ You can change the default Event in the following ways:
 * In the component API : `initialEventID = Shader.PropertyToID("MyEventName";`.
 * Using the [ExposedProperty Helper Class](ExposedPropertyHelper.md).
 
-## Random Seed Control
+## Random seed control
 
-Every effect instance has settings and controls for its random seed. You can modify the seed to influence the random values the Visual Effect Graph Asset uses.
+Every effect instance has settings and controls for its random seed. You can modify the seed to influence the random values the Visual Effect Graph uses.
 
-* `resetSeedOnPlay = true/false`: Controls whether Unity computes a new random seed every time you call the `Play()` function. This causes each random value the Visual Effect Graph Asset uses to be different to what it was in previous simulations.
+* `resetSeedOnPlay = true/false`: Controls whether Unity computes a new random seed every time you call the `Play()` function. This causes each random value the Visual Effect Graph uses to be different to what it was in previous simulations.
 * `startSeed = intSeed`: Sets a manual seed that the **Random Number** Operator uses to create random values for this Visual Effect. Unity ignores this value if `resetSeedOnPlay` is set to `true`.
 
-## Property Interface
+<a name="PropertyInterface"></a>
+
+## Property interface
 
 To access the state and values of Exposed Properties, you can use multiple methods in the [Visual Effect component](VisualEffectComponent.md). Most of the API methods allow access to the property via the following methods:
 
 * A `string` property name. This is easy to use, but is the least optimized method.
-* An `int` property ID. To generate this ID from a string property name, you can use `Shader.PropertyToID(string name)`. This is the most optimized method.
+* An `int` property ID. To generate this ID from a string property name, use `Shader.PropertyToID(string name)`. This is the most optimized method.
 * The [ExposedProperty Helper Class](ExposedPropertyHelper.md). This combines the ease of use the string property name provides with the efficiency of the integer property ID.
 
-#### Checking for exposed properties
+### Checking for exposed properties
 
-You can check if the component's Visual Effect Graph Asset contains a specific exposed property. To do this, you can use the method from the following group that corresponds to the property's type:
+You can check if the component's Visual Effect Graph contains a specific exposed property. To do this, you can use the method from the following group that corresponds to the property's type:
 
 * `HasInt(property)`
 * `HasUInt(property)`
@@ -80,11 +82,11 @@ You can check if the component's Visual Effect Graph Asset contains a specific e
 * `HasTexture(property)`
 * `HasMatrix4x4(property)`
 
-For each method, if the Visual Effect Graph Asset contains an exposed property of the correct type with the same name or ID that you pass in, the method returns `true`. Otherwise the methods returns `false`.
+For each method, if the Visual Effect Graph contains an exposed property of the correct type with the same name or ID you pass in, the method returns `true`. Otherwise the method returns `false`.
 
-#### Getting the values of exposed properties
+### Getting the values of exposed properties
 
-The component API allows you to get the value of an exposed property in the component's Visual Effect Graph Asset. To do this, you can use the method from the following group that corresponds to the property's type:
+The component API allows you to get the value of an exposed property in the component's Visual Effect Graph. To do this, you can use the method from the following group that corresponds to the property's type:
 
 * `GetInt(property)`
 * `GetUInt(property)`
@@ -99,11 +101,11 @@ The component API allows you to get the value of an exposed property in the comp
 * `GetTexture(property)`
 * `GetMatrix4x4(property)`
 
-For each method, if the Visual Effect Graph Asset contains an exposed property of the correct type with the same name or ID that you pass in, the method returns the property's value. Otherwise the methods return the default value for the property type.
+For each method, if the Visual Effect Graph contains an exposed property of the correct type with the same name or ID you pass in, the method returns the property's value. Otherwise the method returns the default value for the property type.
 
-#### Setting the values of exposed properties
+### Setting the values of exposed properties
 
-The component API allows you to set the value of an exposed property in the component's Visual Effect Graph Asset. To do this, you can use the method from the following group that corresponds to the property's type:
+The component API allows you to set the value of an exposed property in the component's Visual Effect Graph. To do this, you can use the method from the following group that corresponds to the property's type:
 
 * `SetInt(property,value)`
 * `SetUInt(property,value)`
@@ -118,60 +120,60 @@ The component API allows you to set the value of an exposed property in the comp
 * `SetTexture(property,value)`
 * `SetMatrix4x4(property,value)`
 
-Each method overrides the value of the corresponding property with the value that you pass in.
+Each method overrides the value of the corresponding property with the value you pass in.
 
-#### Resetting property overrides and default values
+### Resetting property overrides and default values
 
-The component API allows you to resetting property overrides back to their original values. To do this, use the `ResetOverride(property)` method.
+The component API allows you to reset property overrides back to their original values. To do this, use the `ResetOverride(property)` method.
 
 ## Events
 
 ### Sending Events
 
-You can send [Events](Events.md) to the Visual Effect instance using the following API:
+The component API allows you to send [Events](Events.md) to the component's Visual Effect Graph at runtime. To do this, use either of the following methods:
 
 * `SendEvent(eventNameOrId)`
 * `SendEvent(eventNameOrId, eventAttribute)`
 
-The parameter `eventNameOrId` can be of the following types:
+The `eventNameOrId` parameter can be one of the following types:
 
-- a `string` event Name : easy to use but less optimized.
-- an `int` event ID that can be generated and cached using `Shader.PropertyToID(string name)`
-- an [ExposedProperty Helper Class](ExposedPropertyHelper.md) that will cache the `int` value corresponding to the string name
+* A `string` property name. This is easy to use, but is the least optimized method.
+* An `int` property ID. To generate this ID from a string property name, use `Shader.PropertyToID(string name)`. This is the most optimized method.
+* The [ExposedProperty Helper Class](ExposedPropertyHelper.md). This combines the ease of use the string property name provides with the efficiency of the integer property ID.
 
-The optional EventAttribute parameter attaches an **Event Attribute Payload** to the event, so it can be processed by the Graph.
+The optional `eventAttribute` parameter attaches an **Event Attribute Payload** to the Event. They payload provides data that the Graph processes with the Event.
 
-> Events are sent to the API then Consumed in the next Visual Effect Component Update, happening the next frame.
+**Note**: When you send an Event, the Visual Effect component processes it in its next Update(), which happens during the next frame.
 
 ### Event Attributes
 
-Event Attributes are [Attributes](Attributes.md) attached to [Events](Events.md) and that can be processed by the graph. Event Attributes are stored in a `VFXEventAttribute` class, created from an instance of a [Visual Effect](VisualEffectComponent.md), based on its currently set  [Visual Effect Graph Asset](VisualEffectGraphAsset.md).
+Event Attributes are [Attributes](Attributes.md) that attach to [Events](Events.md) and can be processed by the Visual Effect Graph. To create and store Event Attributes, use the `VFXEventAttribute` class. The Visual Effect component is responsible for creating instances of the `VFXEventAttribute` class and creates them based on the currently assigned [Visual Effect Graph](VisualEffectGraphAsset.md).
 
 #### Creating Event Attributes
 
-In order to Create and Use a `VFXEventAttribute` use the `CreateVFXEventAttribute()` method of the `VisualEffect` component. If you plan on sending multiple times events using attributes, you will preferably cache this object so you can reuse it.
+To create a `VFXEventAttribute`, use the `CreateVFXEventAttribute()` method of the Visual Effect component. If you want to send the same Event multiple times with the same attributes, you should store the `VFXEventAtrribute`, rather than create a new one every time you send the Event.
 
-#### Setting Attribute Payload
+#### Setting the Attribute's payload
 
-Once Created, you can access an API similar to Has/Get/Set Properties in order to set the Attribute Payload.
+After you create an Event Attribute, you use API similar to the Has/Get/Set property methods described in the [Property interface section](#PropertyInterface) to set the Attribute Payload.
 
-* Has : `HasBool`, `HasVector3`, `HasFloat`,... To check if attribute is present
-* Get : `GetBool`, `GetVector3`, `GetFloat`,... To get attribute value
-* Set: `SetBool`, `SetVector3`, `SetFloat`,... To get attribute value
+* Has : `HasBool`, `HasVector3`, `HasFloat`,... To check if an Attribute exists.
+* Get : `GetBool`, `GetVector3`, `GetFloat`,... To get the value of an Attribute.
+* Set: `SetBool`, `SetVector3`, `SetFloat`,... To set the value of an Attribute.
 
-The full API Reference is available on [Scripting API Documentation](https://docs.unity3d.com/2019.3/Documentation/ScriptReference/VFX.VFXEventAttribute.html).
+For the full Attribute API documentation, see [VFXEventAttribute](https://docs.unity3d.com/Documentation/ScriptReference/VFX.VFXEventAttribute.html) in the Unity Script Reference.
 
-The attribute name or ID can be of the following types:
+The attribute name or ID can be one of the following types:
 
-- a `string` attribute Name : easy to use but less optimized.
-- an `int` attribute ID that can be generated and cached using `Shader.PropertyToID(string name)`
-- an [ExposedProperty Helper Class](ExposedPropertyHelper.md) that will cache the int value corresponding to the string name
+- A `string` property name. This is easy to use, but is the least optimized method.
+- An `int` property ID. To generate this ID from a string property name, use `Shader.PropertyToID(string name)`. This is the most optimized method.
+- The [ExposedProperty Helper Class](ExposedPropertyHelper.md). This combines the ease of use the string property name provides with the efficiency of the integer property ID.
 
-#### Life Cycle and Compatibility
+#### Life cycle and compatibility
 
-Event Attributes, when created, are compatible with the Visual Effect Graph Asset that is currently set on the Visual Effect component. This means that you will be able to use the same `VFXEventAttribute` to send events to instances of the graph, as long as you do not change the `visualEffectAsset` property of the component to another Graph.
+When you create an Event Attribute, it is compatible with the Visual Effect Graph Asset currently assigned to the Visual Effect component. This means that you are able to use the same `VFXEventAttribute` to send Events to other instances of the same graph. If you change the `visualEffectAsset` property of a Visual Effect component to another graph, you can no longer use the same `VFXEventAttribute` to send Events to it.
 
-If you manage multiple Visual Effect instances in scene and want to share event payloads, you can cache one VFXEventAttribute and use it on all the instances.
+If you want to manage multiple Visual Effect instances in the same Scene and want to share Event payloads, you can store one `VFXEventAttribute` and use it on all the instances.
 
 #### Example (in a MonoBehaviour)
 
@@ -199,9 +201,9 @@ void OnTriggerEnter()
 }
 ```
 
-## Debug Functionality
+## Debugging
 
-Some debug Functionality values can be get on every component:
+Each Visual Effect component contains the following debug properties:
 
-* `aliveParticleCount` : return a read-back value of the alive particles in the whole effect. Readback of this value happens asynchronously every second, and it does return the value of a previous frame.
-* `culled` return whether the effect was culled from any camera at the previous frame.
+* `aliveParticleCount`: The number of alive particles in the entire effect.<br/>**Note**: The component calculates this value asynchronously every second which means that the result may be the number of alive particles during a frame rendered up to a second before you access this property.
+* `culled`: Indicates whether any Camera culled the effect in the previous frame.
