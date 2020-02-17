@@ -31,6 +31,7 @@ namespace UnityEditor.Rendering.HighDefinition
         Vector2 m_PreviousMousePosition = Vector2.zero;
 
         Cubemap cubemap => target as Cubemap;
+        Texture texture => target as Texture;
 
         public float previewExposure = 0f;
         public float mipLevelPreview = 0f;
@@ -48,7 +49,7 @@ namespace UnityEditor.Rendering.HighDefinition
             if (m_PreviewUtility == null)
                 InitPreview();
 
-            m_ReflectiveMaterial.SetTexture("_Cubemap", target as Texture);
+            m_ReflectiveMaterial.SetTexture("_Cubemap", texture);
         }
 
         void OnDisable()
@@ -115,7 +116,7 @@ namespace UnityEditor.Rendering.HighDefinition
             GUILayout.Box(s_MipMapLow, s_PreLabel, GUILayout.MaxWidth(20));
         }
 
-        public override string GetInfoString() => $"{cubemap.width}x{cubemap.height} {GraphicsFormatUtility.GetFormatString(cubemap.graphicsFormat)}";
+        public override string GetInfoString() => $"{texture.width}x{texture.height} {GraphicsFormatUtility.GetFormatString(texture.graphicsFormat)}";
 
         void InitPreview()
         {
