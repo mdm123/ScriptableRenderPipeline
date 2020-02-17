@@ -22,7 +22,7 @@ namespace UnityEngine.Rendering.Universal
         protected abstract ScriptableRenderer Create();
 
         [SerializeField] List<ScriptableRendererFeature> m_RendererFeatures = new List<ScriptableRendererFeature>(10);
-        [SerializeField] List<string> m_RendererFeatureMap = new List<string>(10);
+        [SerializeField] List<long> m_RendererFeatureMap = new List<long>(10);
 
         /// <summary>
         /// List of additional render pass features for this renderer.
@@ -61,91 +61,98 @@ namespace UnityEngine.Rendering.Universal
             return null;
         }
 
-        internal void ValidateRendererFeatures()
+        internal bool ValidateRendererFeatures()
         {
             // Get all Subassets
             var subassets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(this));
-            var linkedGuids = new List<string>();
-            var loadedAssets = new Dictionary<string, object>();
-            var mapValid = m_RendererFeatureMap?.Count == m_RendererFeatures?.Count;
+            var linkedIds = new List<long>();
+            var loadedAssets = new Dictionary<long, object>();
+            var mapValid = m_RendererFeatureMap != null || m_RendererFeatureMap?.Count == m_RendererFeatures?.Count;
 
             var debugOutput = $"{name} Render Feature Validation\n-Valid Subassets:";
 
+            // Collect valid, compiled sub-assets
             foreach (var asset in subassets)
             {
                 if (asset == null) continue;
                 if (asset.GetType().BaseType == typeof(ScriptableRendererFeature))
                 {
                     AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out var guid, out long localId);
-                    loadedAssets.Add(guid, asset);
+                    loadedAssets.Add(localId, asset);
                     debugOutput += $"--{asset.name} guid={guid}\n";
                 }
             }
 
+            // Collect assets that are connected to the list
             for (var i = 0; i < m_RendererFeatures?.Count; i++)
             {
                 if(!m_RendererFeatures[i]) continue;
                 if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(m_RendererFeatures[i], out var guid, out long localId))
                 {
-                    linkedGuids.Add(guid);
+                    linkedIds.Add(localId);
                 }
             }
 
             var mapDebug = mapValid ? "Linking" : "Map missing, will attempt to re-map";
             debugOutput += $"Feature List Status({mapDebug}):\n";
 
+            // Try fix missing references
             for (var i = 0; i < m_RendererFeatures?.Count; i++)
             {
                 if (m_RendererFeatures[i] == null)
                 {
                     if (mapValid)
                     {
-                        var guid = m_RendererFeatureMap[i];
-                        if(guid != null)
-                            m_RendererFeatures[i] =
-                            AssetDatabase.LoadAssetAtPath<ScriptableRendererFeature>(
-                                AssetDatabase.GUIDToAssetPath(guid));
+                        var localId = m_RendererFeatureMap[i];
+                        loadedAssets.TryGetValue(localId, out var asset);
+                        m_RendererFeatures[i] = (ScriptableRendererFeature)asset;
+
                         debugOutput += $"--{i}:Repaired";
                     }
                     else
                     {
-                        m_RendererFeatures[i] =
-                            AssetDatabase.LoadAssetAtPath<ScriptableRendererFeature>(
-                                AssetDatabase.GUIDToAssetPath(GetUnusedGUID(ref linkedGuids, ref loadedAssets)));
+                        m_RendererFeatures[i] = (ScriptableRendererFeature)GetUnusedAsset(ref linkedIds, ref loadedAssets);
                         debugOutput += $"--{i}:Missing - attempting to fix...";
                     }
                 }
                 debugOutput += m_RendererFeatures[i] != null ? $"--{i}:Linked" : $"--{i}:Missing";
             }
+
             Debug.Log(debugOutput);
 
             if (!mapValid)
             {
                 CreateMap();
             }
+
+            if (!m_RendererFeatures.Contains(null)) return true;
+
+            Debug.LogError("Still missing features");
+            return false;
         }
 
-        private string GetUnusedGUID(ref List<string> usedGuids, ref Dictionary<string, object> assets)
+        private static object GetUnusedAsset(ref List<long> usedIds, ref Dictionary<long, object> assets)
         {
             foreach (var asset in assets)
             {
-                var alreadyLinked = usedGuids.Any(used => asset.Key == used);
+                var alreadyLinked = usedIds.Any(used => asset.Key == used);
 
                 if (alreadyLinked) continue;
-                usedGuids.Add(asset.Key);
-                return asset.Key;
+                usedIds.Add(asset.Key);
+                return asset.Value;
             }
 
             return null;
         }
 
-        internal void CreateMap()
+        [ContextMenu("Re-makeMap")]
+        private void CreateMap()
         {
             m_RendererFeatureMap.Clear();
-            for (int i = 0; i < rendererFeatures.Count; i++)
+            for (var i = 0; i < rendererFeatures.Count; i++)
             {
                 AssetDatabase.TryGetGUIDAndLocalFileIdentifier(m_RendererFeatures[i], out var guid, out long localId);
-                m_RendererFeatureMap.Add(guid);
+                m_RendererFeatureMap.Add(localId);
             }
         }
 #endif

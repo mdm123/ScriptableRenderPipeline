@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using System.Text.RegularExpressions;
 using UnityEngine.Scripting.APIUpdating;
-using UnityEngine.UIElements;
 
 namespace UnityEditor.Rendering.Universal
 {
@@ -28,14 +27,19 @@ namespace UnityEditor.Rendering.Universal
             }
         }
 
-        private SavedBool[] m_Foldouts;
         private bool m_MissingRenderers;
         private SerializedProperty m_RenderPasses;
+        private SerializedProperty m_RenderPassMap;
+
+        private void OnValidate()
+        {
+            throw new NotImplementedException();
+        }
 
         private void OnEnable()
         {
             m_RenderPasses = serializedObject.FindProperty("m_RendererFeatures");
-            CreateFoldoutBools();
+            m_RenderPassMap = serializedObject.FindProperty("m_RendererFeatureMap");
         }
 
         public override void OnInspectorGUI()
@@ -43,13 +47,10 @@ namespace UnityEditor.Rendering.Universal
             if(m_RenderPasses == null)
                 OnEnable();
             serializedObject.Update();
-
-            if(m_RenderPasses.arraySize != m_Foldouts.Length)
-                CreateFoldoutBools();
-
             DrawRendererFeatureList();
 
-            serializedObject.ApplyModifiedProperties();
+            if(serializedObject.hasModifiedProperties)
+                serializedObject.ApplyModifiedProperties();
         }
 
         private void DrawRendererFeatureList()
@@ -77,7 +78,7 @@ namespace UnityEditor.Rendering.Universal
             //Add renderer
             if (GUILayout.Button("Add Renderer Feature", EditorStyles.miniButton))
             {
-                AddPass();
+                AddPassMenu();
             }
 
 
@@ -87,7 +88,7 @@ namespace UnityEditor.Rendering.Universal
                 EditorGUILayout.HelpBox("You have missing RendererFeature references, we can attempt to fix these or you can choose to do it manually via the Debug Inspector.", MessageType.Error);
                 if (!GUILayout.Button("Fix Renderer Features", EditorStyles.miniButton)) return;
                 var data = target as ScriptableRendererData;
-                data.ValidateRendererFeatures();
+                m_MissingRenderers = !data.ValidateRendererFeatures();
             }
         }
 
@@ -149,18 +150,19 @@ namespace UnityEditor.Rendering.Universal
             menu.DropDown(new Rect(position, Vector2.zero));
         }
 
-        private void CreateFoldoutBools()
+        private void AddPassMenu()
         {
-            m_Foldouts = new SavedBool[m_RenderPasses.arraySize];
-            for (var i = 0; i < m_RenderPasses.arraySize; i++)
+            var menu = new GenericMenu();
+            var types = TypeCache.GetTypesDerivedFrom<ScriptableRendererFeature>();
+            foreach (Type type in types)
             {
-                var name = m_RenderPasses.serializedObject.targetObject.name;
-                m_Foldouts[i] =
-                    new SavedBool($"{name}.ELEMENT{i.ToString()}.PassFoldout", false);
+                string path = GetMenuNameFromType(type);
+                menu.AddItem(new GUIContent(path), false, AddComponent, type.Name);
             }
+            menu.ShowAsContext();
         }
 
-        internal void AddComponent(object type)
+        private void AddComponent(object type)
         {
             serializedObject.Update();
 
@@ -179,6 +181,12 @@ namespace UnityEditor.Rendering.Universal
             m_RenderPasses.arraySize++;
             var componentProp = m_RenderPasses.GetArrayElementAtIndex(m_RenderPasses.arraySize - 1);
             componentProp.objectReferenceValue = component;
+
+            // Update GUID Map
+            m_RenderPassMap.arraySize++;
+            var guidProp = m_RenderPassMap.GetArrayElementAtIndex(m_RenderPassMap.arraySize - 1);
+            guidProp.longValue = localId;
+
             serializedObject.ApplyModifiedProperties();
 
             // Force save / refresh
@@ -190,19 +198,7 @@ namespace UnityEditor.Rendering.Universal
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void AddPass()
-        {
-            var menu = new GenericMenu();
-            var types = TypeCache.GetTypesDerivedFrom<ScriptableRendererFeature>();
-            foreach (Type type in types)
-            {
-                string path = GetMenuNameFromType(type);
-                menu.AddItem(new GUIContent(path), false, AddComponent, type.Name);
-            }
-            menu.ShowAsContext();
-        }
-
-        internal void RemoveComponent(int id)
+        private void RemoveComponent(int id)
         {
             var property = m_RenderPasses.GetArrayElementAtIndex(id);
             var component = property.objectReferenceValue;
@@ -210,6 +206,7 @@ namespace UnityEditor.Rendering.Universal
 
             // remove the array index itself from the list
             m_RenderPasses.DeleteArrayElementAtIndex(id);
+            m_RenderPassMap.DeleteArrayElementAtIndex(id);
             serializedObject.ApplyModifiedProperties();
 
             // Destroy the setting object after ApplyModifiedProperties(). If we do it before, redo
@@ -223,11 +220,12 @@ namespace UnityEditor.Rendering.Universal
             AssetDatabase.SaveAssets();
         }
 
-        internal void MoveComponent(int id, int offset)
+        private void MoveComponent(int id, int offset)
         {
             Undo.SetCurrentGroupName($"Move Render Feature");
             serializedObject.Update();
             m_RenderPasses.MoveArrayElement(id, id + offset);
+            m_RenderPassMap.MoveArrayElement(id, id + offset);
             serializedObject.ApplyModifiedProperties();
             // Force save / refresh
             EditorUtility.SetDirty(target);
