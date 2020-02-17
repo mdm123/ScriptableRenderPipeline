@@ -22,11 +22,11 @@ This change means that HDRP needs to generate fewer Shader variants because it n
 
 ### Upgrading
 
-To upgrade all the ShaderGraphs in your Project, select **Edit > Render Pipelines > Reset All Shader Graphs Scene Material Properties (Project)**. This automatically:
+To upgrade all the ShaderGraphs in your Project, select **Edit > Render Pipelines > Reset All Shader Graphs Scene Material BlendStates (Project)**. This automatically:
 
 1. Iterates over every Material in the Project.
 2. Copies all the keywords needed to sync Material properties with their Master Node values.
 3. Calls the HDRP material keyword reset function.
 4. Sets the render queue of the Material to match the one on the ShaderGraph.
 
- To only upgrade the ShaderGraphs in your Scene, select **Edit > Render Pipelines > Reset All Shader Graphs Scene Material Properties (Scene)** instead.
+ To only upgrade the ShaderGraphs in your Scene, select **Edit > Render Pipelines > Reset All Shader Graphs Scene Material BlendStates (Scene)** instead.
