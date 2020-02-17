@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEditor.Rendering.Universal.ShaderGUI;
 using UnityEngine;
@@ -37,7 +38,8 @@ namespace UnityEditor.Rendering.Universal
             {
                 string[] guids = AssetDatabase.FindAssets("t:material", null);
 
-                foreach (var asset in guids)
+                var distinctGuids = guids.Distinct();
+                foreach (var asset in distinctGuids)
                 {
                     var path = AssetDatabase.GUIDToAssetPath(asset);
                     AssetDatabase.ImportAsset(path);
