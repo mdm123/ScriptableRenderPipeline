@@ -1454,6 +1454,7 @@ namespace UnityEngine.Rendering.HighDefinition
 #if UNITY_EDITOR
         bool needRefreshPrefabInstanceEmissiveMeshes = false;
 #endif
+        bool needRefreshEmissiveMeshesFromTimeLineUpdate = false;
 
         void CreateChildEmissiveMeshViewerIfNeeded()
         {
@@ -2083,6 +2084,13 @@ namespace UnityEngine.Rendering.HighDefinition
                 return;
 #endif
 
+            // Delayed cleanup when removing emissive mesh from timeline
+            if (needRefreshEmissiveMeshesFromTimeLineUpdate)
+            {
+                needRefreshEmissiveMeshesFromTimeLineUpdate = false;
+                UpdateAreaLightEmissiveMesh();
+            }
+
 #if UNITY_EDITOR
             // Prefab instance child emissive mesh update
             if (needRefreshPrefabInstanceEmissiveMeshes)
@@ -2135,10 +2143,10 @@ namespace UnityEngine.Rendering.HighDefinition
                 timelineWorkaround.oldLightColorTemperature = legacyLight.colorTemperature;
             }
         }
-
+        
         void OnDidApplyAnimationProperties()
         {
-            UpdateAllLightValues();
+            UpdateAllLightValues(fromTimeLine: true);
         }
 
         /// <summary>
@@ -2350,7 +2358,7 @@ namespace UnityEngine.Rendering.HighDefinition
 #endif
         }
 
-        internal void UpdateAreaLightEmissiveMesh()
+        internal void UpdateAreaLightEmissiveMesh(bool fromTimeLine = false)
         {
             bool isAreaLight = type == HDLightType.Area;
             bool displayEmissiveMesh = isAreaLight && displayAreaLightEmissiveMesh;
@@ -2359,7 +2367,17 @@ namespace UnityEngine.Rendering.HighDefinition
             if (!isAreaLight || !displayEmissiveMesh)
             {
                 if (m_ChildEmissiveMeshViewer)
-                    DestroyChildEmissiveMeshViewer();
+                {
+                    if (fromTimeLine)
+                    {
+                        // Cannot perform destroy in OnDidApplyAnimationProperties
+                        // So shut down rendering instead and set up a flag for cleaning later
+                        emissiveMeshRenderer.enabled = false;
+                        needRefreshEmissiveMeshesFromTimeLineUpdate = true;
+                    }
+                    else
+                        DestroyChildEmissiveMeshViewer();
+                }
 
                 // We don't have anything to do left if the dislay emissive mesh option is disabled
                 return;
@@ -2549,7 +2567,7 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <summary>
         /// Synchronize all the HD Additional Light values with the Light component.
         /// </summary>
-        public void UpdateAllLightValues()
+        public void UpdateAllLightValues(bool fromTimeLine = false)
         {
             UpdateShapeSize();
 
@@ -2559,7 +2577,7 @@ namespace UnityEngine.Rendering.HighDefinition
             // Patch bounds
             UpdateBounds();
 
-            UpdateAreaLightEmissiveMesh();
+            UpdateAreaLightEmissiveMesh(fromTimeLine: fromTimeLine);
         }
 
 #endregion
