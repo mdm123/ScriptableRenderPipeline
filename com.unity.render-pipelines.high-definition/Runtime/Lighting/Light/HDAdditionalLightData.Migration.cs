@@ -157,14 +157,14 @@ namespace UnityEngine.Rendering.HighDefinition
 
                     CoreUtils.Destroy(data.GetComponent<MeshFilter>());
                     CoreUtils.Destroy(emissiveMesh);
-
-                    data.UpdateAreaLightEmissiveMesh();
                     
                     if (emissiveMeshWasHere)
                     {
-                        data.emissiveMeshRenderer.shadowCastingMode = oldShadowCastingMode;
-                        data.emissiveMeshRenderer.motionVectorGenerationMode = oldMotionVectorMode;
+                        data.m_AreaLightEmissiveMeshShadowCastingMode = oldShadowCastingMode;
+                        data.m_AreaLightEmissiveMeshMotionVectorGenerationMode = oldMotionVectorMode;
                     }
+
+                    data.UpdateAreaLightEmissiveMesh();
                 })
             );
 #pragma warning restore 0618, 0612

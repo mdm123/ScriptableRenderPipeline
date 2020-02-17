@@ -1448,70 +1448,87 @@ namespace UnityEngine.Rendering.HighDefinition
         const string k_EmissiveMeshViewerName = "EmissiveMeshViewer";
 
         GameObject m_ChildEmissiveMeshViewer;
-        GameObject childEmissiveMeshViewer
-        {
-            get
-            {
-                //if not here, try to get it
-                if (m_ChildEmissiveMeshViewer == null || m_ChildEmissiveMeshViewer.Equals(null))
-                {
-                    foreach(Transform child in transform)
-                    {
-                        if(child.name == k_EmissiveMeshViewerName
-                            && child.GetComponent<MeshFilter>() != null
-                            && child.GetComponent<MeshRenderer>() != null
-                            && (child.gameObject.hideFlags == HideFlags.NotEditable || child.gameObject.hideFlags == (HideFlags.NotEditable | HideFlags.HideInHierarchy)))
-                        {
-                            m_ChildEmissiveMeshViewer = child.gameObject;
-                            return m_ChildEmissiveMeshViewer;
-                        }
-                    }
-                }
-                
-                //if still not here, create it
-                if (m_ChildEmissiveMeshViewer == null || m_ChildEmissiveMeshViewer.Equals(null))
-                {
-                    m_ChildEmissiveMeshViewer = new GameObject(k_EmissiveMeshViewerName, typeof(MeshFilter), typeof(MeshRenderer));
-                    m_ChildEmissiveMeshViewer.hideFlags = HideFlags.NotEditable;
-                    m_ChildEmissiveMeshViewer.transform.SetParent(transform);
-                    m_ChildEmissiveMeshViewer.transform.localPosition = Vector3.zero;
-                    m_ChildEmissiveMeshViewer.transform.localRotation = Quaternion.identity;
-                    m_ChildEmissiveMeshViewer.transform.localScale = Vector3.one;
-                    m_ChildEmissiveMeshViewer.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
-                }
-
-                return m_ChildEmissiveMeshViewer;
-            }
-        }
-
-        MeshRenderer m_EmissiveMeshRenderer;
-        internal MeshRenderer emissiveMeshRenderer
-        {
-            get
-            {
-                if (m_EmissiveMeshRenderer == null)
-                {
-                    childEmissiveMeshViewer.TryGetComponent<MeshRenderer>(out m_EmissiveMeshRenderer);
-                }
-
-                return m_EmissiveMeshRenderer;
-            }
-        }
-
         MeshFilter m_EmissiveMeshFilter;
-        internal MeshFilter emissiveMeshFilter
-        {
-            get
-            {
-                if (m_EmissiveMeshFilter == null)
-                {
-                    childEmissiveMeshViewer.TryGetComponent<MeshFilter>(out m_EmissiveMeshFilter);
-                }
+        internal MeshRenderer emissiveMeshRenderer { get; private set; }
 
-                return m_EmissiveMeshFilter;
+#if UNITY_EDITOR
+        bool needRefreshPrefabInstanceEmissiveMeshes = false;
+#endif
+
+        void CreateChildEmissiveMeshViewerIfNeeded()
+        {
+#if UNITY_EDITOR
+            if (PrefabUtility.IsPartOfPrefabAsset(this))
+                    return;
+#endif
+
+            //if not here, create it
+            if (m_ChildEmissiveMeshViewer == null || m_ChildEmissiveMeshViewer.Equals(null))
+            {
+                m_ChildEmissiveMeshViewer = new GameObject(k_EmissiveMeshViewerName, typeof(MeshFilter), typeof(MeshRenderer));
+                m_ChildEmissiveMeshViewer.hideFlags = HideFlags.NotEditable | HideFlags.DontSaveInBuild | HideFlags.DontSaveInEditor;
+                m_ChildEmissiveMeshViewer.transform.SetParent(transform);
+                m_ChildEmissiveMeshViewer.transform.localPosition = Vector3.zero;
+                m_ChildEmissiveMeshViewer.transform.localRotation = Quaternion.identity;
+                m_ChildEmissiveMeshViewer.transform.localScale = Vector3.one;
+
+                m_EmissiveMeshFilter = m_ChildEmissiveMeshViewer.GetComponent<MeshFilter>();
+                emissiveMeshRenderer = m_ChildEmissiveMeshViewer.GetComponent<MeshRenderer>();
+                emissiveMeshRenderer.shadowCastingMode = m_AreaLightEmissiveMeshShadowCastingMode;
+                emissiveMeshRenderer.motionVectorGenerationMode = m_AreaLightEmissiveMeshMotionVectorGenerationMode;
             }
         }
 
+        void DestroyChildEmissiveMeshViewer()
+        {
+            m_EmissiveMeshFilter = null;
+
+            emissiveMeshRenderer.enabled = false;
+            emissiveMeshRenderer = null;
+
+            CoreUtils.Destroy(m_ChildEmissiveMeshViewer);
+            m_ChildEmissiveMeshViewer = null;
+        }
+        
+        [SerializeField]
+        ShadowCastingMode m_AreaLightEmissiveMeshShadowCastingMode = ShadowCastingMode.Off;
+        [SerializeField]
+        MotionVectorGenerationMode m_AreaLightEmissiveMeshMotionVectorGenerationMode;
+
+        /// <summary> Change the Shadow Casting Mode of the generated emissive mesh for Area Light </summary>
+        public ShadowCastingMode areaLightEmissiveMeshShadowCastingMode
+        {
+            get => m_AreaLightEmissiveMeshShadowCastingMode;
+            set
+            {
+                if (m_AreaLightEmissiveMeshShadowCastingMode == value)
+                    return;
+
+                m_AreaLightEmissiveMeshShadowCastingMode = value;
+                if (emissiveMeshRenderer != null && !emissiveMeshRenderer.Equals(null))
+                {
+                    emissiveMeshRenderer.shadowCastingMode = m_AreaLightEmissiveMeshShadowCastingMode;
+                }
+            }
+        }
+
+        /// <summary> Change the Motion Vector Generation Mode of the generated emissive mesh for Area Light </summary>
+        public MotionVectorGenerationMode areaLightEmissiveMeshMotionVectorGenerationMode
+        {
+            get => m_AreaLightEmissiveMeshMotionVectorGenerationMode;
+            set
+            {
+                if (m_AreaLightEmissiveMeshMotionVectorGenerationMode == value)
+                    return;
+
+                m_AreaLightEmissiveMeshMotionVectorGenerationMode = value;
+                if (emissiveMeshRenderer != null && !emissiveMeshRenderer.Equals(null))
+                {
+                    emissiveMeshRenderer.motionVectorGenerationMode = m_AreaLightEmissiveMeshMotionVectorGenerationMode;
+                }
+            }
+        }
+        
         private void DisableCachedShadowSlot()
         {
             if (WillRenderShadowMap() && !ShadowIsUpdatedEveryFrame())
@@ -2060,10 +2077,23 @@ namespace UnityEngine.Rendering.HighDefinition
         // TODO: There are a lot of old != current checks and assignation in this function, maybe think about using another system ?
         void LateUpdate()
         {
-// We force the animation in the editor and in play mode when there is an animator component attached to the light
+            // We force the animation in the editor and in play mode when there is an animator component attached to the light
 #if !UNITY_EDITOR
             if (!m_Animated)
                 return;
+#endif
+
+#if UNITY_EDITOR
+            // Prefab instance child emissive mesh update
+            if (needRefreshPrefabInstanceEmissiveMeshes)
+            {
+                // We must not call the update on Prefab Asset that are already updated or we will enter infinite loop
+                if (!PrefabUtility.IsPartOfPrefabAsset(this))
+                {
+                    UpdateAreaLightEmissiveMesh();
+                }
+                needRefreshPrefabInstanceEmissiveMeshes = false;
+            }
 #endif
 
             Vector3 shape = new Vector3(shapeWidth, m_ShapeHeight, shapeRadius);
@@ -2222,6 +2252,16 @@ namespace UnityEngine.Rendering.HighDefinition
             UpdateBounds();
             DisableCachedShadowSlot();
             m_ShadowMapRenderedSinceLastRequest = false;
+
+#if UNITY_EDITOR
+            // If modification are due to change on prefab asset that are non overridden on this prefab instance
+            if (PrefabUtility.IsPartOfPrefabInstance(this) && ((PrefabUtility.GetCorrespondingObjectFromOriginalSource(this) as HDAdditionalLightData)?.needRefreshPrefabInstanceEmissiveMeshes ?? false))
+            {
+                // As we cannot Create/Destroy in OnValidate, delay call to next Update
+                // To do this, wo set the same flag on prefab instances
+                needRefreshPrefabInstanceEmissiveMeshes = true;
+            }
+#endif
         }
 
 #region Update functions to patch values in the Light component when we change properties inside HDAdditionalLightData
@@ -2315,44 +2355,50 @@ namespace UnityEngine.Rendering.HighDefinition
             bool isAreaLight = type == HDLightType.Area;
             bool displayEmissiveMesh = isAreaLight && displayAreaLightEmissiveMesh;
 
-            // Only show childEmissiveMeshViewer if type is Area
-#if UNITY_EDITOR
-            if (isAreaLight)
+            // Only show childEmissiveMeshViewer if type is Area and requested
+            if (!isAreaLight || !displayEmissiveMesh)
             {
-                if (childEmissiveMeshViewer.hideFlags == (HideFlags.NotEditable | HideFlags.HideInHierarchy))
-                    childEmissiveMeshViewer.hideFlags = HideFlags.NotEditable;
-            }
-            else
-            {
-                if (childEmissiveMeshViewer.hideFlags == HideFlags.NotEditable)
-                {
-                    childEmissiveMeshViewer.hideFlags = HideFlags.NotEditable | HideFlags.HideInHierarchy;
-                    EditorApplication.DirtyHierarchyWindowSorting();
-                }
-            }
-#endif
-
-            // Show Emissive Mesh if needed
-            if (!displayEmissiveMesh)
-            {
-                if (emissiveMeshRenderer)
-                    emissiveMeshRenderer.enabled = false;
+                if (m_ChildEmissiveMeshViewer)
+                    DestroyChildEmissiveMeshViewer();
 
                 // We don't have anything to do left if the dislay emissive mesh option is disabled
                 return;
+            }
+#if UNITY_EDITOR
+            else if (PrefabUtility.IsPartOfPrefabAsset(this))
+            {
+                // Child emissive mesh should not be handled in asset but we must trigger every instance to update themselves. Will be done in OnValidate
+                needRefreshPrefabInstanceEmissiveMeshes = true;
+
+                // We don't have anything to do left as the child will never appear while editing the prefab asset
+                return;
+            }
+#endif
+            else
+            {
+                CreateChildEmissiveMeshViewerIfNeeded();
+
+#if UNITY_EDITOR
+                // In Prefab Instance, as we can be called from OnValidate due to Prefab Asset modification, we need to refresh modification on child emissive mesh
+                if (needRefreshPrefabInstanceEmissiveMeshes && PrefabUtility.IsPartOfPrefabInstance(this))
+                {
+                    emissiveMeshRenderer.shadowCastingMode = m_AreaLightEmissiveMeshShadowCastingMode;
+                    emissiveMeshRenderer.motionVectorGenerationMode = m_AreaLightEmissiveMeshMotionVectorGenerationMode;
+                }
+#endif
             }
 
             // Update Mesh
             switch (areaLightShape)
             {
                 case AreaLightShape.Tube:
-                    if (emissiveMeshFilter.sharedMesh != HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveCylinderMesh)
-                        emissiveMeshFilter.sharedMesh = HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveCylinderMesh;
+                    if (m_EmissiveMeshFilter.sharedMesh != HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveCylinderMesh)
+                        m_EmissiveMeshFilter.sharedMesh = HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveCylinderMesh;
                     break;
                 case AreaLightShape.Rectangle:
                 default:
-                    if (emissiveMeshFilter.sharedMesh != HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveQuadMesh)
-                        emissiveMeshFilter.sharedMesh = HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveQuadMesh;
+                    if (m_EmissiveMeshFilter.sharedMesh != HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveQuadMesh)
+                        m_EmissiveMeshFilter.sharedMesh = HDRenderPipeline.defaultAsset.renderPipelineResources.assets.emissiveQuadMesh;
                     break;
             }
 
@@ -2380,12 +2426,8 @@ namespace UnityEngine.Rendering.HighDefinition
 #endif
 
             // Update child emissive mesh scale
-            if (emissiveMeshRenderer)
-            {
-                emissiveMeshRenderer.enabled = true;
-                Vector3 lossyScale = emissiveMeshRenderer.transform.localRotation * transform.lossyScale;
-                emissiveMeshRenderer.transform.localScale = new Vector3(lightSize.x / lossyScale.x, lightSize.y / lossyScale.y, k_MinAreaWidth / lossyScale.z);
-            }
+            Vector3 lossyScale = emissiveMeshRenderer.transform.localRotation * transform.lossyScale;
+            emissiveMeshRenderer.transform.localScale = new Vector3(lightSize.x / lossyScale.x, lightSize.y / lossyScale.y, k_MinAreaWidth / lossyScale.z);
 
             // NOTE: When the user duplicates a light in the editor, the material is not duplicated and when changing the properties of one of them (source or duplication)
             // It either overrides both or is overriden. Given that when we duplicate an object the name changes, this approach works. When the name of the game object is then changed again

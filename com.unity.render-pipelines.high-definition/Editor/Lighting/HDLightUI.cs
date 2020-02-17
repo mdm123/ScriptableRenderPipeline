@@ -184,6 +184,7 @@ namespace UnityEditor.Rendering.HighDefinition
         {
             EditorGUI.BeginChangeCheck();
             Rect lineRect = EditorGUILayout.GetControlRect();
+            HDLightType lightType = serialized.type;
             HDLightType updatedLightType;
 
             //Partial support for prefab. There is no way to fully support it at the moment.
@@ -191,7 +192,6 @@ namespace UnityEditor.Rendering.HighDefinition
             //(This will continue unless we remove AdditionalDatas)
             using (new SerializedHDLight.LightTypeEditionScope(lineRect, s_Styles.shape, serialized))
             {
-                HDLightType lightType = serialized.type;
                 EditorGUI.showMixedValue = lightType == (HDLightType)(-1);
                 int index = Array.FindIndex((HDLightType[])Enum.GetValues(typeof(HDLightType)), x => x == lightType);
                 updatedLightType = (HDLightType)EditorGUI.Popup(lineRect, s_Styles.shape, index, s_Styles.shapeNames);
@@ -226,6 +226,7 @@ namespace UnityEditor.Rendering.HighDefinition
 
                 // For GI we need to detect any change on additional data and call SetLightDirty + For intensity we need to detect light shape change
                 serialized.needUpdateAreaLightEmissiveMeshComponents = true;
+                serialized.FetchAreaLightEmissiveMeshComponents();
                 SetLightsDirty(owner); // Should be apply only to parameter that's affect GI, but make the code cleaner
             }
             EditorGUI.showMixedValue = false;
@@ -771,14 +772,7 @@ namespace UnityEditor.Rendering.HighDefinition
             if (cookie.width < LightCookieManager.k_MinCookieSize || cookie.height < LightCookieManager.k_MinCookieSize)
                 EditorGUILayout.HelpBox(s_Styles.cookieTooSmall, MessageType.Warning);
         }
-
-        enum MotionVector
-        {
-            CameraMotionOnly = MotionVectorGenerationMode.Camera,
-            PerObjectMotion = MotionVectorGenerationMode.Object,
-            ForceNoMotion = MotionVectorGenerationMode.ForceNoMotion
-        }
-
+        
         static void DrawEmissionAdvancedContent(SerializedHDLight serialized, Editor owner)
         {
             HDLightType lightType = serialized.type;
@@ -807,7 +801,10 @@ namespace UnityEditor.Rendering.HighDefinition
                 EditorGUI.BeginChangeCheck();
                 EditorGUILayout.PropertyField(serialized.displayAreaLightEmissiveMesh, s_Styles.displayAreaLightEmissiveMesh);
                 if (EditorGUI.EndChangeCheck())
+                {
+                    serialized.FetchAreaLightEmissiveMeshComponents();
                     serialized.needUpdateAreaLightEmissiveMeshComponents = true;
+                }
 
                 bool showSubArea = serialized.displayAreaLightEmissiveMesh.boolValue && !serialized.displayAreaLightEmissiveMesh.hasMultipleDifferentValues;
                 ++EditorGUI.indentLevel;
@@ -816,32 +813,26 @@ namespace UnityEditor.Rendering.HighDefinition
                 ShadowCastingMode newCastShadow;
                 EditorGUI.showMixedValue = serialized.areaLightEmissiveMeshCastShadow.hasMultipleDifferentValues;
                 EditorGUI.BeginChangeCheck();
-                using (new SerializedHDLight.AreaLightEmissiveMeshDrawScope(lineRect, s_Styles.areaLightEmissiveMeshCastShadow, showSubArea, serialized.areaLightEmissiveMeshCastShadow))
+                using (new SerializedHDLight.AreaLightEmissiveMeshDrawScope(lineRect, s_Styles.areaLightEmissiveMeshCastShadow, showSubArea, serialized.areaLightEmissiveMeshCastShadow, serialized.deportedAreaLightEmissiveMeshCastShadow))
                 {
                     newCastShadow = (ShadowCastingMode)EditorGUI.EnumPopup(lineRect, s_Styles.areaLightEmissiveMeshCastShadow, (ShadowCastingMode)serialized.areaLightEmissiveMeshCastShadow.intValue);
                 }
                 if (EditorGUI.EndChangeCheck())
                 {
-                    using (new SerializedHDLight.AreaLightEmissiveMeshEditionScope(serialized))
-                    {
-                        serialized.areaLightEmissiveMeshCastShadow.intValue = (int)newCastShadow;
-                    }
+                    serialized.UpdateAreaLightEmissiveMeshCastShadow(newCastShadow);
                 }
 
                 lineRect = EditorGUILayout.GetControlRect();
-                MotionVector newMotionVector;
+                SerializedHDLight.MotionVector newMotionVector;
                 EditorGUI.showMixedValue = serialized.areaLightEmissiveMeshMotionVector.hasMultipleDifferentValues;
                 EditorGUI.BeginChangeCheck();
-                using (new SerializedHDLight.AreaLightEmissiveMeshDrawScope(lineRect, s_Styles.areaLightEmissiveMeshMotionVector, showSubArea, serialized.areaLightEmissiveMeshMotionVector))
+                using (new SerializedHDLight.AreaLightEmissiveMeshDrawScope(lineRect, s_Styles.areaLightEmissiveMeshMotionVector, showSubArea, serialized.areaLightEmissiveMeshMotionVector, serialized.deportedAreaLightEmissiveMeshMotionVector))
                 {
-                    newMotionVector = (MotionVector)EditorGUI.EnumPopup(lineRect, s_Styles.areaLightEmissiveMeshMotionVector, (MotionVector)serialized.areaLightEmissiveMeshMotionVector.intValue);
+                    newMotionVector = (SerializedHDLight.MotionVector)EditorGUI.EnumPopup(lineRect, s_Styles.areaLightEmissiveMeshMotionVector, (SerializedHDLight.MotionVector)serialized.areaLightEmissiveMeshMotionVector.intValue);
                 }
                 if (EditorGUI.EndChangeCheck())
                 {
-                    using (new SerializedHDLight.AreaLightEmissiveMeshEditionScope(serialized))
-                    {
-                        serialized.areaLightEmissiveMeshMotionVector.intValue = (int)newMotionVector;
-                    }
+                    serialized.UpdateAreaLightEmissiveMeshMotionVectorGeneration(newMotionVector);
                 }
 
                 EditorGUI.showMixedValue = false;
