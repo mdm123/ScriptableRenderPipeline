@@ -57,6 +57,7 @@ packages:
     hascodependencies: 1
 platforms:
     - name: win
+      os: windows
       agent:
         type: Unity::VM
         image: package-ci/win10:stable
@@ -64,6 +65,7 @@ platforms:
       copycmd: copy upm-ci~\packages\*.tgz .Editor\Data\Resources\PackageManager\Editor
       editorpath: .\.Editor
     - name: mac
+      os: macos
       agent:
         type: Unity::VM::osx
         image: buildfarm/mac:stable
@@ -113,8 +115,9 @@ test_{{ package.id }}_{{ platform.name }}_{{ editor.version }}:
       paths:
         - "**/upm-ci~/test-results/**/*"
   dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   {% for dep in package.dependencies %}
-  - {{ dep }}
+    - {{ dep }}
   {% endfor %}
 {% endfor %}
 {% endfor %}

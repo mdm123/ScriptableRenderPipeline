@@ -75,7 +75,8 @@ linux_apis:
       paths:
         - "**/test-results/**"
   dependencies:
-  - .yamato/upm-ci-vfxmain.yml#Build_{{ project.name }}_Win_{{ win_api.name }}_Player_{{ editor.version }}
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
+    - .yamato/upm-ci-vfxmain.yml#Build_{{ project.name }}_Win_{{ win_api.name }}_Player_{{ editor.version }}
   
 Build_{{ project.name }}_Win_{{ win_api.name }}_Player_{{ editor.version }}:
   name : Build {{ project.name }} on Win_{{ win_api.name }}_Player on version {{ editor.version }}
@@ -98,6 +99,8 @@ Build_{{ project.name }}_Win_{{ win_api.name }}_Player_{{ editor.version }}:
     {% endif %} 
 
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }}Windows64 --extra-editor-arg="-executemethod" --extra-editor-arg="CustomBuild.BuildWindows{{ win_api.name }}Linear" --testproject=. --editor-location=.Editor --artifacts_path=test-results --timeout=1200 --player-save-path=../../players --build-only
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   artifacts:
     logs:
       paths:
@@ -134,6 +137,8 @@ Build_{{ project.name }}_Win_{{ win_api.name }}_Player_{{ editor.version }}:
     {% endif %}    
 
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }} --extra-editor-arg="{{ win_api.cmd }}" --testproject=. --editor-location=.Editor --artifacts_path=test-results
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   artifacts:
     logs:
       paths:
@@ -184,7 +189,8 @@ Build_{{ project.name }}_Win_{{ win_api.name }}_Player_{{ editor.version }}:
       mkdir -p TestProjects/{{ project.folder }}/test-results/
       scp -i ~/.ssh/id_rsa_macmini -o "StrictHostKeyChecking=no" -r bokken@$BOKKEN_DEVICE_IP:/Users/bokken/ScriptableRenderPipeline/TestProjects/{{ project.folder }}/test-results/ TestProjects/{{ project.folder }}/test-results/
       exit $UTR_RESULT
-
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   artifacts:
     logs:
       paths:
@@ -228,6 +234,8 @@ Build_{{ project.name }}_Win_{{ win_api.name }}_Player_{{ editor.version }}:
     {% else %}
     - cd TestProjects/{{ project.folder }} && DISPLAY=:0.0 utr/utr --extra-editor-arg="{{ linux_api.cmd }}"  {{ testplatform.args }} --testproject=. --editor-location=.Editor --artifacts_path=upm-ci~/test-results
     {% endif %}
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   artifacts:
     logs:
       paths:
@@ -282,16 +290,5 @@ All_{{ project.name }}_{{ editor.version }}:
     
   {% endfor %}
   {% endfor %}
-  # {% if editor.version == "fast-trunk" %}
-  # triggers:
-    # changes:
-      # only:
-        # - "com.unity.visualeffectgraph/**/*"
-        # - "com.unity.testing.visualeffectgraph/**/*"
-        # - "TestProjects/VisualEffectGraph*/**/*"
-      # except:
-        # - "**/*.md"
-  # {% endif %}
-
 {% endfor %}
 {% endfor %}

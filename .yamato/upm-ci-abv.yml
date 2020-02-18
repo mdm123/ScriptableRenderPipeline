@@ -106,6 +106,8 @@ smoke_test_{{ testplatform.name }}_{{ editor.version }}:
   {% else %}
   - cd TestProjects/SRP_SmokeTest && utr\utr {{ testplatform.args }} --testproject=. --editor-location=.Editor --artifacts_path=test-results
   {% endif %}
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   artifacts:
     logs:
       paths:

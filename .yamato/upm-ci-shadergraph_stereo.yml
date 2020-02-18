@@ -51,12 +51,14 @@ projects:
     {% endif %}
 
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }}Windows64 --artifacts_path=test-results --timeout=1200 --player-load-path=../../players --player-connection-ip=auto
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
+    - .yamato/upm-ci-shadergraph_stereo.yml#Build_{{ project.name }}_Win_Player_{{ editor.version }}
   artifacts:
     logs:
       paths:
         - "**/test-results/**"
-  dependencies:
-  - .yamato/upm-ci-shadergraph_stereo.yml#Build_{{ project.name }}_Win_Player_{{ editor.version }}
+
   
 Build_{{ project.name }}_Win_Player_{{ editor.version }}:
   name : Build {{ project.name }} on Win_{{ win_api.name }}_Player on version {{ editor.version }}
@@ -79,6 +81,8 @@ Build_{{ project.name }}_Win_Player_{{ editor.version }}:
     {% endif %}
 
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }}Windows64  --testproject=. --editor-location=.Editor --artifacts_path=test-results --timeout=1200 --player-save-path=../../players --build-only
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   artifacts:
     logs:
       paths:
@@ -115,7 +119,8 @@ Build_{{ project.name }}_Win_Player_{{ editor.version }}:
     {% endif %}
     
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }} --testproject=. --editor-location=.Editor --artifacts_path=upm-ci~/test-results
-            
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   artifacts:
     logs:
       paths:
