@@ -4,7 +4,7 @@ editors:
   - version: fast-trunk
     cmd: -u trunk --fast
   - version: CUSTOM-REVISION
-    cmd: -u %CUSTOM_REVISION%
+    cmd: -u $CUSTOM_REVISION$
 platforms:
   # Exhaustive list of operating systems and editor components used by all jobs so the preparation jobs
   # can make sure all editors are cached on cheap vms before starting the heavy duty machines for running tests
@@ -40,11 +40,14 @@ editor:priming:{{ editor.version }}:{{ platform.os }}:
     {% for v in template_environment_variables %}
     {{ v[0] }}: {{ v[1]}}
     {% endfor %}
+    {% if editor.version == 'CUSTOM-REVISION' %}
+    CUSTOM_REVISION: custom_revision_not_set
+    {% endif %}
   commands:
     - pip install unity-downloader-cli --user --upgrade --extra-index-url https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple
     - >
       unity-downloader-cli
-      -u {{ editor.version }}
+      {{ editor.cmd }}
       -o {{ platform.os }}
       --wait
       --skip-download

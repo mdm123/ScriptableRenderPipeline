@@ -8,13 +8,21 @@ editors:
     cmdposix: -r $CUSTOM_REVISION
 platforms:
   - name: Win
+    os: windows
     type: Unity::VM::GPU
     image: sdet/gamecode_win10:stable
     flavor: b1.large
+    components:
+      - editor
+      - il2cpp
   - name: OSX_Metal
+    os: macos
     type: Unity::metal::macmini
     image: slough-ops/macos-10.14-xcode
     flavor: m1.mac
+    components:
+      - editor
+      - il2cpp
 testplatforms:
   - name: Standalone
     args: --suite=playmode --platform=Standalone

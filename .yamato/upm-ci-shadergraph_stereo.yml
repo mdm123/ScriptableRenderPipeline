@@ -8,9 +8,13 @@ editors:
     cmdposix: -r $CUSTOM_REVISION
 platforms:
   - name: Win
+    os: windows
     type: Unity::VM::GPU
     image: sdet/gamecode_win10:stable
     flavor: b1.large
+    components:
+      - editor
+      - il2cpp
 testplatforms:
   - name: Standalone
     args: --suite=playmode --platform=Standalone
@@ -44,11 +48,7 @@ projects:
     - git clone git@github.cds.internal.unity3d.com:unity/utr.git  TestProjects/{{ project.folder }}/utr
     - pip install unity-downloader-cli --extra-index-url https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple --pre
     
-    {% if editor.version == 'CUSTOM-REVISION' %}
-    - cd TestProjects/{{ project.folder }} && unity-downloader-cli {{ editor.cmdwin }} -c editor --wait --published
-    {% else %}
-    - cd TestProjects/{{ project.folder }} && unity-downloader-cli {{ editor.cmd }} -c editor --wait --published
-    {% endif %}
+    - cd TestProjects/{{ project.folder }} && unity-downloader-cli --source-file unity_revision.txt {% for component in platform.components %}-c {{ component }} {% endfor %}--wait --published-only
 
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }}Windows64 --artifacts_path=test-results --timeout=1200 --player-load-path=../../players --player-connection-ip=auto
   dependencies:
@@ -74,11 +74,7 @@ Build_{{ project.name }}_Win_Player_{{ editor.version }}:
     - git clone git@github.cds.internal.unity3d.com:unity/utr.git  TestProjects/{{ project.folder }}/utr
     - pip install unity-downloader-cli --extra-index-url https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple --pre
     
-    {% if editor.version == 'CUSTOM-REVISION' %}
-    - cd TestProjects/{{ project.folder }} && unity-downloader-cli {{ editor.cmdwin }} -c editor --wait --published
-    {% else %}
-    - cd TestProjects/{{ project.folder }} && unity-downloader-cli {{ editor.cmd }} -c editor --wait --published
-    {% endif %}
+    - cd TestProjects/{{ project.folder }} && unity-downloader-cli --source-file unity_revision.txt {% for component in platform.components %}-c {{ component }} {% endfor %}--wait --published-only
 
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }}Windows64  --testproject=. --editor-location=.Editor --artifacts_path=test-results --timeout=1200 --player-save-path=../../players --build-only
   dependencies:
@@ -112,11 +108,7 @@ Build_{{ project.name }}_Win_Player_{{ editor.version }}:
     - git clone git@github.cds.internal.unity3d.com:unity/utr.git TestProjects/{{ project.folder }}/utr
     - pip install unity-downloader-cli --extra-index-url https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple
     
-    {% if editor.version == 'CUSTOM-REVISION' %}
-    - cd TestProjects/{{ project.folder }} && unity-downloader-cli {{ editor.cmdwin }} -c editor --wait --published
-    {% else %}
-    - cd TestProjects/{{ project.folder }} && unity-downloader-cli {{ editor.cmd }} -c editor --wait --published
-    {% endif %}
+    - cd TestProjects/{{ project.folder }} && unity-downloader-cli --source-file unity_revision.txt {% for component in platform.components %}-c {{ component }} {% endfor %}--wait --published-only
     
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }} --testproject=. --editor-location=.Editor --artifacts_path=upm-ci~/test-results
   dependencies:
