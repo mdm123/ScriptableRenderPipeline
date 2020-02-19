@@ -724,7 +724,7 @@ namespace UnityEngine.Rendering.HighDefinition
                     container.children.Add(new DebugUI.BoolField { displayName = "Use Selection", getter = () => data.lightingDebugSettings.shadowDebugUseSelection, setter = value => data.lightingDebugSettings.shadowDebugUseSelection = value, flags = DebugUI.Flags.EditorOnly, onValueChanged = RefreshLightingDebug });
 
                     if (!data.lightingDebugSettings.shadowDebugUseSelection)
-                        container.children.Add(new DebugUI.UIntField { displayName = "Map Index", getter = () => data.lightingDebugSettings.shadowMapIndex, setter = value => data.lightingDebugSettings.shadowMapIndex = value, min = () => 0u, max = () => (uint)(Math.Max(0, (RenderPipelineManager.currentPipeline as HDRenderPipeline).GetCurrentShadowCount() - 1u)) });
+                        container.children.Add(new DebugUI.UIntField { displayName = "Shadow Map Index", getter = () => data.lightingDebugSettings.shadowMapIndex, setter = value => data.lightingDebugSettings.shadowMapIndex = value, min = () => 0u, max = () => (uint)(Math.Max(0, (RenderPipelineManager.currentPipeline as HDRenderPipeline).GetCurrentShadowCount() - 1u)) });
 
                     shadows.children.Add(container);
                 }
@@ -739,7 +739,7 @@ namespace UnityEngine.Rendering.HighDefinition
                 });
 
                 shadows.children.Add(new DebugUI.BoolField{
-                    displayName = "Clear Atlas",
+                    displayName = "Clear Shadow Atlas",
                     getter = () => data.lightingDebugSettings.clearShadowAtlas,
                     setter = (v) => data.lightingDebugSettings.clearShadowAtlas = v
                 });
