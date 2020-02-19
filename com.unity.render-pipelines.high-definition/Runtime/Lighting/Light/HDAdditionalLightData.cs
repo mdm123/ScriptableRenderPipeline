@@ -1798,6 +1798,12 @@ namespace UnityEngine.Rendering.HighDefinition
                     switch (lightType)
                     {
                         case HDLightType.Point:
+                            var rMatrix = (shadowRotationAngle.Equals(Vector3.zero))
+                                                 ? Matrix4x4.identity
+                                                 : Matrix4x4.Rotate(Quaternion.Euler(shadowRotationAngle));
+
+                            visibleLight.localToWorldMatrix = rMatrix;
+
                             HDShadowUtils.ExtractPointLightData(
                                 visibleLight, viewportSize, shadowNearPlane,
                                 normalBias, (uint)index, out shadowRequest.view,

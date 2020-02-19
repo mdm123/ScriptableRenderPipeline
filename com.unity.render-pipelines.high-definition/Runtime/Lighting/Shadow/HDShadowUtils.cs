@@ -244,7 +244,30 @@ namespace UnityEngine.Rendering.HighDefinition
             return deviceProj * view;
         }
 
-        static Matrix4x4 ExtractPointLightMatrix(VisibleLight vl, uint faceIdx, float nearPlane, float guardAngle, out Matrix4x4 view, out Matrix4x4 proj, out Matrix4x4 deviceProj, out Matrix4x4 vpinverse, out Vector4 lightDir, out ShadowSplitData splitData)
+        public static Quaternion QuaternionFromMatrix(Matrix4x4 m)
+        {
+            // Adapted from: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/index.htm
+            Quaternion q = new Quaternion();
+            q.w = Mathf.Sqrt(Mathf.Max(0, 1 + m[0, 0] + m[1, 1] + m[2, 2])) / 2;
+            q.x = Mathf.Sqrt(Mathf.Max(0, 1 + m[0, 0] - m[1, 1] - m[2, 2])) / 2;
+            q.y = Mathf.Sqrt(Mathf.Max(0, 1 - m[0, 0] + m[1, 1] - m[2, 2])) / 2;
+            q.z = Mathf.Sqrt(Mathf.Max(0, 1 - m[0, 0] - m[1, 1] + m[2, 2])) / 2;
+            q.x *= Mathf.Sign(q.x * (m[2, 1] - m[1, 2]));
+            q.y *= Mathf.Sign(q.y * (m[0, 2] - m[2, 0]));
+            q.z *= Mathf.Sign(q.z * (m[1, 0] - m[0, 1]));
+            return q;
+        }
+
+        static Matrix4x4 ExtractPointLightMatrix(VisibleLight vl,
+                                                 uint faceIdx,
+                                                 float nearPlane,
+                                                 float guardAngle,
+                                                 out Matrix4x4 view,
+                                                 out Matrix4x4 proj,
+                                                 out Matrix4x4 deviceProj,
+                                                 out Matrix4x4 vpinverse,
+                                                 out Vector4 lightDir,
+                                                 out ShadowSplitData splitData)
         {
             if (faceIdx > (uint)CubemapFace.NegativeZ)
                 Debug.LogError("Tried to extract cubemap face " + faceIdx + ".");
@@ -257,7 +280,54 @@ namespace UnityEngine.Rendering.HighDefinition
             // calculate the view matrices
             Vector3 lpos = vl.light.transform.position;
             view = kCubemapFaces[faceIdx];
+
+            // TEST ROTATION
+
+            if (vl.light.transform.parent != null)
+            {
+                // Transform parent
+                ///var transformParent = vl.light.transform.parent.transform;
+                //var parentQuaternion = transformParent.rotation;
+                //var parentRotationMatrix = Matrix4x4.Rotate(parentQuaternion);
+                ///var quaternionCustomRotation = QuaternionFromMatrix(vl.localToWorldMatrix);
+                ///transformParent.rotation = quaternionCustomRotation * Quaternion.Euler(new Vector3(180, 0, 270));
+
+
+                // Custom Rotation
+                ///var quaternionCustomRotation = QuaternionFromMatrix(vl.localToWorldMatrix);
+                ///transformParent.rotation = parentQuaternion * quaternionCustomRotation;
+
+
+                // Custom Rotation 2
+                ///var targetRot = transformParent.eulerAngles;
+                ///targetRot = vl.localToWorldMatrix.MultiplyPoint(targetRot);
+                ///
+                ///Quaternion target = Quaternion.Euler(targetRot);
+                ///transformParent.rotation = Quaternion.Slerp(transformParent.rotation, target,  Time.deltaTime * 5.0f);
+
+
+                //Custom Rotation 3
+                var transformParent = vl.light.transform.parent.transform;
+                var quaternionCustomRotation = QuaternionFromMatrix(vl.localToWorldMatrix);
+
+                transformParent.rotation = quaternionCustomRotation * Quaternion.Euler(new Vector3(180, 0, 270));
+
+                lightDir = vl.localToWorldMatrix.MultiplyVector(vl.light.transform.forward);
+                lpos = vl.localToWorldMatrix.MultiplyPoint(vl.light.transform.position);
+
+                // Cancel parent transformation
+                ///var parentWorldToLocal = transformParent.worldToLocalMatrix;
+                ///view = parentWorldToLocal.inverse * parentRotationMatrix;
+
+                //view *= parentRotationMatrix * vl.localToWorldMatrix;
+            }
+            else
+            {
+                Debug.LogError("[Rotation Shadow Map] - Light doesn't have a parent.");
+            }
+
             Vector3 inverted_viewpos = kCubemapFaces[faceIdx].MultiplyPoint(-lpos);
+
             view.SetColumn(3, new Vector4(inverted_viewpos.x, inverted_viewpos.y, inverted_viewpos.z, 1.0f));
 
             float nearZ = Mathf.Max(nearPlane, k_MinShadowNearPlane);
