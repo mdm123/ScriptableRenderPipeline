@@ -11,6 +11,9 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Debug.hlsl" // Require for GetIndexColor auto generated
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Builtin/BuiltinData.cs.hlsl"
 
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/Debug/DebugDisplay.hlsl"
+
 //-----------------------------------------------------------------------------
 // helper macro
 //-----------------------------------------------------------------------------
@@ -63,7 +66,7 @@ void DecodeDistortion(float4 inBuffer, out float2 distortion, out float distorti
     isValidSource = (inBuffer.z != 0.0);
 }
 
-void GetBuiltinDataDebug(uint paramId, BuiltinData builtinData, inout float3 result, inout bool needLinearToSRGB)
+void GetBuiltinDataDebug(uint paramId, BuiltinData builtinData, PositionInputs posInput, inout float3 result, inout bool needLinearToSRGB)
 {
     GetGeneratedBuiltinDataDebug(paramId, builtinData, result, needLinearToSRGB);
 
@@ -79,6 +82,29 @@ void GetBuiltinDataDebug(uint paramId, BuiltinData builtinData, inout float3 res
         break;
     case DEBUGVIEW_BUILTIN_BUILTINDATA_DISTORTION:
         result = float3((builtinData.distortion / (abs(builtinData.distortion) + 1) + 1) * 0.5, 0.5);
+        break;
+    case DEBUGVIEW_BUILTIN_BUILTINDATA_RENDERING_LAYERS:
+        uint maxLayers =  32;
+        int lightLayers = builtinData.renderingLayers;
+        result = float3(0, 0, 0);
+
+        if (_DebugLightLayersMask & 0x100) // Light layers debug only
+        {
+            maxLayers = 8;
+            lightLayers = (lightLayers & _DebugLightLayersMask) & 0xFF;
+        }
+
+        uint stripeSize = 8;
+        uint layerId = 0, layerCount = countbits(lightLayers);
+        for (uint i = 0; (i < maxLayers) && (layerId < layerCount); i++)
+        {
+            if (lightLayers & (1 << i))
+            {
+                if ((posInput.positionSS.y / stripeSize) % layerCount == layerId)
+                    result = GetIndexColor(i); // NOTE: GetIndexColor works only for 0 <= i < 16
+                layerId++;
+            }
+        }
         break;
     }
 }

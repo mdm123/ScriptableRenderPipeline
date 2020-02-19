@@ -251,6 +251,26 @@ namespace UnityEngine.Rendering.HighDefinition
         }
 
         /// <summary>
+        /// Returns the current Light Layers Debug Mask.
+        /// </summary>
+        /// <returns>Current Light Layers Debug Mask.</returns>
+        public int GetDebugLightLayersMask()
+        {
+            var settings = data.lightingDebugSettings;
+            if (!settings.debugLightLayers)
+                return 0;
+            if (settings.debugLightLayersUseSelection != 0)
+            {
+                int mask = settings.debugLightLayersSelection;
+                if ((mask & 0x10000) != 0 && settings.debugLightLayersUseSelection == 2) // show shadow light layers
+                    mask >>= 8;
+                data.lightingDebugSettings.debugLightLayersSelection = 0;
+                return 0x100 | (mask & 0xFF);
+            }
+            return 0x100 | (int)settings.debugLightLayersFilterMask;
+        }
+
+        /// <summary>
         /// Returns the current Shadow Map Debug Mode.
         /// </summary>
         /// <returns>Current Shadow Map Debug Mode.</returns>
@@ -476,6 +496,29 @@ namespace UnityEngine.Rendering.HighDefinition
                 data.mipMapDebugSettings.debugMipMapMode = DebugMipMapMode.None;
             }
             data.lightingDebugSettings.debugLightFilterMode = value;
+        }
+
+        /// <summary>
+        /// Set the current Light layers Debug Mode
+        /// </summary>
+        /// <param name="value">Desired Light Layers Debug Mode.</param>
+        public void SetDebugLightLayersMode(bool value)
+        {
+            if (value)
+            {
+                data.ResetExclusiveEnumIndices();
+
+                var builtins = typeof(Builtin.BuiltinData);
+                var attr = builtins.GetCustomAttributes(true)[0] as GenerateHLSL;
+                var renderingLayers = Array.IndexOf(builtins.GetFields(), builtins.GetField("renderingLayers"));
+
+                SetDebugViewMaterial(attr.paramDefinesStart + renderingLayers);
+            }
+            else
+            {
+                SetDebugViewMaterial(0);
+            }
+            data.lightingDebugSettings.debugLightLayers = value;
         }
 
         /// <summary>
@@ -721,10 +764,53 @@ namespace UnityEngine.Rendering.HighDefinition
                 }
                 });
 
-
                 lighting.children.Add(new DebugUI.EnumField { displayName = "Debug Mode", getter = () => (int)data.lightingDebugSettings.debugLightingMode, setter = value => SetDebugLightingMode((DebugLightingMode)value), autoEnum = typeof(DebugLightingMode), onValueChanged = RefreshLightingDebug, getIndex = () => data.lightingDebugModeEnumIndex, setIndex = value => { data.ResetExclusiveEnumIndices(); data.lightingDebugModeEnumIndex = value; } });
                 lighting.children.Add(new DebugUI.BitField { displayName = "Hierarchy Debug Mode", getter = () => data.lightingDebugSettings.debugLightFilterMode, setter = value => SetDebugLightFilterMode((DebugLightFilterMode)value), enumType = typeof(DebugLightFilterMode), onValueChanged = RefreshLightingDebug, });
 
+                lighting.children.Add(new DebugUI.BoolField { displayName = "Light Layers Visualization", getter = () => data.lightingDebugSettings.debugLightLayers, setter = value => SetDebugLightLayersMode(value), onValueChanged = RefreshLightingDebug });
+
+                if (data.lightingDebugSettings.debugLightLayers)
+                {
+                    var container = new DebugUI.Container();
+                    container.children.Add(new DebugUI.BoolField {
+                        displayName = "Use Selected Light",
+                        getter = () => data.lightingDebugSettings.debugLightLayersUseSelection != 0,
+                        setter = value => data.lightingDebugSettings.debugLightLayersUseSelection = (value ? 1 : 0),
+                        flags = DebugUI.Flags.EditorOnly,
+                        onValueChanged = RefreshLightingDebug
+                    });
+
+                    if (data.lightingDebugSettings.debugLightLayersUseSelection != 0)
+                    {
+                        //if ((data.lightingDebugSettings.debugLightLayersSelection & 0x10000) != 0) // If selected light does not link shadow light layers
+                        {
+                            container.children.Add(new DebugUI.BoolField
+                            {
+                                displayName = "Match Light's Shadow Layers",
+                                getter = () => data.lightingDebugSettings.debugLightLayersUseSelection == 2,
+                                setter = value => data.lightingDebugSettings.debugLightLayersUseSelection = (value ? 2 : 1),
+                                flags = DebugUI.Flags.EditorOnly,
+                                onValueChanged = RefreshLightingDebug
+                            });
+                        }
+                    }
+                    else
+                    {
+                        var field = new DebugUI.BitField {
+                            displayName = "Filter layers",
+                            getter = () => data.lightingDebugSettings.debugLightLayersFilterMask,
+                            setter = value => data.lightingDebugSettings.debugLightLayersFilterMask = (DebugLightLayerFilterMode)value,
+                            enumType = typeof(DebugLightLayerFilterMode)
+                        };
+
+                        var asset = (RenderPipelineManager.currentPipeline as HDRenderPipeline).asset;
+                        for (int i = 0; i < 8; i++)
+                            field.enumNames[i + 1].text = asset.renderingLayerMaskNames[i];
+                        container.children.Add(field);
+                    }
+
+                    lighting.children.Add(container);
+                }
                 list.Add(lighting);
             }
 

@@ -59,6 +59,24 @@ namespace UnityEngine.Rendering.HighDefinition
         IndirectPlanarProbe = 1 << 8,
     }
 
+    [GenerateHLSL]
+    [Flags]
+    public enum DebugLightLayerFilterMode
+    {
+        /// <summary>No light layer filtering.</summary>
+        None = 0,
+        LightLayer1 = 1 << 0,
+        LightLayer2 = 1 << 1,
+        LightLayer3 = 1 << 2,
+        LightLayer4 = 1 << 3,
+        LightLayer5 = 1 << 4,
+        LightLayer6 = 1 << 5,
+        LightLayer7 = 1 << 6,
+        LightLayer8 = 1 << 7,
+    }
+
+
+
     static class DebugLightHierarchyExtensions
     {
         public static bool IsEnabledFor(
@@ -137,6 +155,7 @@ namespace UnityEngine.Rendering.HighDefinition
         {
             return debugLightingMode != DebugLightingMode.None
                 || debugLightFilterMode != DebugLightFilterMode.None
+                || debugLightLayers
                 || overrideSmoothness
                 || overrideAlbedo
                 || overrideNormal
@@ -150,6 +169,18 @@ namespace UnityEngine.Rendering.HighDefinition
         public DebugLightFilterMode debugLightFilterMode = DebugLightFilterMode.None;
         /// <summary>Current Full Screen Lighting debug mode.</summary>
         public DebugLightingMode    debugLightingMode = DebugLightingMode.None;
+        /// <summary>True if Light Layers Visualization is enabled.</summary>
+        public bool                 debugLightLayers = false;
+        /// <summary>1 if Light Layers Visualization uses selected light, 2 if uses light's shadow layers.</summary>
+        public int                 debugLightLayersUseSelection = 0;
+        /// <summary>
+        /// First 8 bits are the Light Layers of the selected light.
+        /// Next 8 bits are the shadow Light Layers of the selected light.
+        /// Next bit tells if light does Link Light Layers.
+        /// </summary>
+        public int                  debugLightLayersSelection = 0;
+        /// <summary>Current Light Layers Filtering mode.</summary>
+        public DebugLightLayerFilterMode debugLightLayersFilterMask = (DebugLightLayerFilterMode)(-1); // Select Everything by default
         /// <summary>Current Shadow Maps debug mode.</summary>
         public ShadowMapDebugMode   shadowDebugMode = ShadowMapDebugMode.None;
         /// <summary>True if Shadow Map debug mode should be displayed for the currently selected light.</summary>
