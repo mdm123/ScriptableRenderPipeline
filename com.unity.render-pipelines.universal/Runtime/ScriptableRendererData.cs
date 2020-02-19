@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine.Scripting.APIUpdating;
 #if UNITY_EDITOR
+using System.Linq;
 using UnityEditor;
 #endif
 
@@ -21,8 +21,8 @@ namespace UnityEngine.Rendering.Universal
         /// <returns>The instance of ScriptableRenderer</returns>
         protected abstract ScriptableRenderer Create();
 
-        [SerializeField] List<ScriptableRendererFeature> m_RendererFeatures = new List<ScriptableRendererFeature>(10);
-        [SerializeField] List<long> m_RendererFeatureMap = new List<long>(10);
+        [SerializeField] internal List<ScriptableRendererFeature> m_RendererFeatures = new List<ScriptableRendererFeature>(10);
+        [SerializeField] internal List<long> m_RendererFeatureMap = new List<long>(10);
 
         /// <summary>
         /// List of additional render pass features for this renderer.
@@ -67,20 +67,17 @@ namespace UnityEngine.Rendering.Universal
             var subassets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(this));
             var linkedIds = new List<long>();
             var loadedAssets = new Dictionary<long, object>();
-            var mapValid = m_RendererFeatureMap != null || m_RendererFeatureMap?.Count == m_RendererFeatures?.Count;
+            var mapValid = m_RendererFeatureMap != null && m_RendererFeatureMap?.Count == m_RendererFeatures?.Count;
 
-            var debugOutput = $"{name} Render Feature Validation\n-Valid Subassets:";
+            var debugOutput = $"{name}\nValid Sub-assets:\n";
 
             // Collect valid, compiled sub-assets
             foreach (var asset in subassets)
             {
-                if (asset == null) continue;
-                if (asset.GetType().BaseType == typeof(ScriptableRendererFeature))
-                {
-                    AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out var guid, out long localId);
-                    loadedAssets.Add(localId, asset);
-                    debugOutput += $"--{asset.name} guid={guid}\n";
-                }
+                if (asset == null || asset.GetType().BaseType != typeof(ScriptableRendererFeature)) continue;
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out var guid, out long localId);
+                loadedAssets.Add(localId, asset);
+                debugOutput += $"-{asset.name}\n--localId={localId}\n";
             }
 
             // Collect assets that are connected to the list
@@ -106,28 +103,22 @@ namespace UnityEngine.Rendering.Universal
                         var localId = m_RendererFeatureMap[i];
                         loadedAssets.TryGetValue(localId, out var asset);
                         m_RendererFeatures[i] = (ScriptableRendererFeature)asset;
-
-                        debugOutput += $"--{i}:Repaired";
                     }
                     else
                     {
                         m_RendererFeatures[i] = (ScriptableRendererFeature)GetUnusedAsset(ref linkedIds, ref loadedAssets);
-                        debugOutput += $"--{i}:Missing - attempting to fix...";
                     }
                 }
-                debugOutput += m_RendererFeatures[i] != null ? $"--{i}:Linked" : $"--{i}:Missing";
+                debugOutput += m_RendererFeatures[i] != null ? $"-{i}:Linked\n" : $"-{i}:Missing\n";
             }
+            if(UniversalRenderPipeline.asset.debugLevel != PipelineDebugLevel.Disabled)
+                Debug.LogWarning(debugOutput);
 
-            Debug.Log(debugOutput);
-
-            if (!mapValid)
-            {
-                CreateMap();
-            }
+            UpdateMap();
 
             if (!m_RendererFeatures.Contains(null)) return true;
 
-            Debug.LogError("Still missing features");
+            Debug.LogError($"{name} is missing RendererFeatures\nThis could be due to missing scripts or compile error.", this);
             return false;
         }
 
@@ -145,14 +136,20 @@ namespace UnityEngine.Rendering.Universal
             return null;
         }
 
-        [ContextMenu("Re-makeMap")]
-        private void CreateMap()
+        private void UpdateMap()
         {
-            m_RendererFeatureMap.Clear();
+            if (m_RendererFeatureMap.Count != m_RendererFeatures.Count)
+            {
+                m_RendererFeatureMap.Clear();
+                m_RendererFeatureMap.AddRange(new long[m_RendererFeatures.Count]);
+            }
+
             for (var i = 0; i < rendererFeatures.Count; i++)
             {
-                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(m_RendererFeatures[i], out var guid, out long localId);
-                m_RendererFeatureMap.Add(localId);
+                if(m_RendererFeatures[i] == null) continue;
+                if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(m_RendererFeatures[i], out var guid,
+                    out long localId)) continue;
+                m_RendererFeatureMap[i] = localId;
             }
         }
 #endif

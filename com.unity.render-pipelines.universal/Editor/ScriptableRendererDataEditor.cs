@@ -1,7 +1,7 @@
 using System;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
-using System.Text.RegularExpressions;
 using UnityEngine.Scripting.APIUpdating;
 
 namespace UnityEditor.Rendering.Universal
@@ -13,10 +13,13 @@ namespace UnityEditor.Rendering.Universal
         {
             public static readonly GUIContent RenderFeatures =
                 new GUIContent("Renderer Features",
-                "Features to include in this renderer.\nTo add or remove features, use the plus and minus at the bottom of this box.");
+                    "Features to include in this renderer.\nTo add or remove features, use the plus and minus at the bottom of this box.");
 
             public static readonly GUIContent PassNameField =
                 new GUIContent("Name", "Render pass name. This name is the name displayed in Frame Debugger.");
+
+            public static readonly GUIContent MissingFeature = new GUIContent("Missing RendererFeature",
+                "Missing reference, due to compilation issues or missing files. you can attempt auto fix or choose to remove the feature.");
 
             public static GUIStyle BoldLabelSimple;
 
@@ -27,19 +30,17 @@ namespace UnityEditor.Rendering.Universal
             }
         }
 
-        private bool m_MissingRenderers;
         private SerializedProperty m_RenderPasses;
         private SerializedProperty m_RenderPassMap;
-
-        private void OnValidate()
-        {
-            throw new NotImplementedException();
-        }
+        private SerializedProperty m_FalseBool;
+        public bool falseBool;
 
         private void OnEnable()
         {
-            m_RenderPasses = serializedObject.FindProperty("m_RendererFeatures");
-            m_RenderPassMap = serializedObject.FindProperty("m_RendererFeatureMap");
+            m_RenderPasses = serializedObject.FindProperty(nameof(ScriptableRendererData.m_RendererFeatures));
+            m_RenderPassMap = serializedObject.FindProperty(nameof(ScriptableRendererData.m_RendererFeatureMap));
+            var editorObj = new SerializedObject(this);
+            m_FalseBool =  editorObj.FindProperty(nameof(falseBool));
         }
 
         public override void OnInspectorGUI()
@@ -80,57 +81,62 @@ namespace UnityEditor.Rendering.Universal
             {
                 AddPassMenu();
             }
-
-
-            //Fix Renderers
-            if (m_MissingRenderers)
-            {
-                EditorGUILayout.HelpBox("You have missing RendererFeature references, we can attempt to fix these or you can choose to do it manually via the Debug Inspector.", MessageType.Error);
-                if (!GUILayout.Button("Fix Renderer Features", EditorStyles.miniButton)) return;
-                var data = target as ScriptableRendererData;
-                m_MissingRenderers = !data.ValidateRendererFeatures();
-            }
         }
 
         private void DrawRendererFeature(int index, ref SerializedProperty prop)
         {
             var obj = prop.objectReferenceValue;
-            if (obj == null)
-            {
-                EditorGUILayout.LabelField("Missing Render Feature");
-                m_MissingRenderers = true;
-                return;
-            }
-
-            var serializedFeature = new SerializedObject(obj);
-            var enabled = serializedFeature.FindProperty("enabled");
             var title = ObjectNames.GetInspectorTitle(obj);
 
-
-            var editor = CreateEditor(obj);
-            var displayContent = CoreEditorUtils.DrawHeaderToggle(
-                title,
-                prop,
-                enabled,
-                pos => OnContextClick(pos, serializedFeature, index)
-            );
-            // ObjectEditor
-            if (displayContent)
+            if (obj != null)
             {
-                EditorGUILayout.DelayedTextField(serializedFeature.FindProperty("m_Name"));
-                editor.OnInspectorGUI();
-                //editor.DrawDefaultInspector();
+                var serializedFeature = new SerializedObject(obj);
+                // Foldout header
+                var displayContent = CoreEditorUtils.DrawHeaderToggle(
+                    title,
+                    prop,
+                    serializedFeature.FindProperty("enabled"),
+                    pos => OnContextClick(pos, index)
+                );
+
+                // ObjectEditor
+                var editor = CreateEditor(obj);
+                if (displayContent)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    var propertyName = serializedFeature.FindProperty("m_Name");
+                    propertyName.stringValue = ValidateName(EditorGUILayout.DelayedTextField(Styles.PassNameField, propertyName.stringValue));
+                    if (EditorGUI.EndChangeCheck())
+                        serializedFeature.ApplyModifiedProperties();
+                    editor.OnInspectorGUI();
+                }
+
+                //Save the changed data
+                if (!serializedFeature.hasModifiedProperties) return;
+
+                serializedFeature.ApplyModifiedProperties();
+                EditorUtility.SetDirty(obj);
+                AssetDatabase.SaveAssets();
             }
-
-            //Save the changed data
-            if (!serializedFeature.hasModifiedProperties) return;
-
-            serializedFeature.ApplyModifiedProperties();
-            EditorUtility.SetDirty(obj);
-            AssetDatabase.SaveAssets();
+            else
+            {
+                CoreEditorUtils.DrawHeaderToggle(
+                    Styles.MissingFeature,
+                    prop,
+                    m_FalseBool,
+                    pos => OnContextClick(pos, index)
+                );
+                m_FalseBool.boolValue = false; // always make sure false bool is false
+                EditorGUILayout.HelpBox(Styles.MissingFeature.tooltip, MessageType.Error);
+                if (GUILayout.Button("Attempt Fix", EditorStyles.miniButton))
+                {
+                    var data = target as ScriptableRendererData;
+                    data.ValidateRendererFeatures();
+                }
+            }
         }
 
-        private void OnContextClick(Vector2 position, SerializedObject obj, int id)
+        private void OnContextClick(Vector2 position, int id)
         {
             var menu = new GenericMenu();
 
@@ -170,7 +176,7 @@ namespace UnityEditor.Rendering.Universal
             component.name = $"New{(string)type}";
             Undo.RegisterCreatedObjectUndo(component, "Add Renderer Feature");
 
-            // Store this new effect as a subasset so we can reference it safely afterwards
+            // Store this new effect as a sub-asset so we can reference it safely afterwards
             // Only when we're not dealing with an instantiated asset
             if (EditorUtility.IsPersistent(target))
                 AssetDatabase.AddObjectToAsset(component, target);
@@ -204,6 +210,8 @@ namespace UnityEditor.Rendering.Universal
             var component = property.objectReferenceValue;
             property.objectReferenceValue = null;
 
+            Undo.SetCurrentGroupName(component == null ? "Remove Renderer Feature" : $"Remove {component.name}");
+
             // remove the array index itself from the list
             m_RenderPasses.DeleteArrayElementAtIndex(id);
             m_RenderPassMap.DeleteArrayElementAtIndex(id);
@@ -212,8 +220,7 @@ namespace UnityEditor.Rendering.Universal
             // Destroy the setting object after ApplyModifiedProperties(). If we do it before, redo
             // actions will be in the wrong order and the reference to the setting object in the
             // list will be lost.
-            Undo.SetCurrentGroupName($"Delete {component.name}");
-            Undo.DestroyObjectImmediate(component);
+            if (component != null) { Undo.DestroyObjectImmediate(component); }
 
             // Force save / refresh
             EditorUtility.SetDirty(target);
@@ -222,7 +229,7 @@ namespace UnityEditor.Rendering.Universal
 
         private void MoveComponent(int id, int offset)
         {
-            Undo.SetCurrentGroupName($"Move Render Feature");
+            Undo.SetCurrentGroupName("Move Render Feature");
             serializedObject.Update();
             m_RenderPasses.MoveArrayElement(id, id + offset);
             m_RenderPassMap.MoveArrayElement(id, id + offset);
