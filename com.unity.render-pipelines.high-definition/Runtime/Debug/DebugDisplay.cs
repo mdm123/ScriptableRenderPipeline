@@ -797,7 +797,7 @@ namespace UnityEngine.Rendering.HighDefinition
                     else
                     {
                         var field = new DebugUI.BitField {
-                            displayName = "Filter layers",
+                            displayName = "Filter Layers",
                             getter = () => data.lightingDebugSettings.debugLightLayersFilterMask,
                             setter = value => data.lightingDebugSettings.debugLightLayersFilterMask = (DebugLightLayerFilterMode)value,
                             enumType = typeof(DebugLightLayerFilterMode)

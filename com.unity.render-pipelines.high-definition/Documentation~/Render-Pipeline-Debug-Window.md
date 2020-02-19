@@ -97,7 +97,7 @@ The **Material** panel has tools that you can use to visualize different Materia
 
 The **Lighting** panel has tools that you can use to visualize various components of the lighting system in your Scene, like, shadowing and direct/indirect lighting.
 
-| **Shadows Debug Option**             | **Description**                                              |
+| **Shadow Debug Option**              | **Description**                                              |
 | ------------------------------------ | ------------------------------------------------------------ |
 | **Debug Mode**                       | Use the drop-down to select which shadow debug information to overlay on the screen.**None**: Select this mode to remove the shadow debug information from the screen.**VisualizePunctualLightAtlas**: Select this mode to overlay the shadow atlas for [punctual Lights](Glossary.html#PunctualLight) in your Scene.**VisualizeDirectionalLightAtlas**: Select this mode to overlay the shadow atlas for Directional Lights in your Scene.**VisualizeAreaLightAtlas**: Select this mode to overlay the shadow atlas for area Lights in your Scene.**VisualizeShadowMap**: Select this mode to overlay a single shadow map for a Light in your Scene.**SingleShadow**: Select this mode to replace the lighting in the Scene with lighting just from the Light you have selected (in black and white). |
 | **- Use Selection**                  | Enable the checkbox to show the shadow map for the Light you select in the Scene. This property only appears when you select **VisualizeShadowMap** or **SingleShadow** from the **Shadow Debug Mode** drop-down. |
@@ -116,6 +116,10 @@ The **Lighting** panel has tools that you can use to visualize various component
 | **- Reflection Probes**              | Enable the checkbox to see Reflection Probes in your Scene. Disable this checkbox to remove Reflection Probes from your Scene's lighting. |
 | **Debug Mode**                       | Use the drop-down to select a lighting mode to debug. For example, you can visualize diffuse lighting, specular lighting, and Directional Light shadow cascades. |
 | **Hierarchy Debug Mode**             | Use the drop-down to select a light type to show the direct lighting for or a Reflection Probe type to show the indirect lighting for. |
+| **Light Layers Visualization**       | Enable the checkbox to visualize light layers of objects in your Scene. |
+| **- Use Selected Light**             | Enable the checkbox to visualize objects affected by the selected light. |
+| **- Match Light's Shadow Layers**    | Enable the checkbox to visualize objects casting shadows for the selected light. |
+| **- Filter Layers**                  | Use the drop-down to filter light layers that you want to visialize. Objects having a matching layer will be displayed in a specific color. |
 
 | **Material Override**                | **Description**                                              |
 | ------------------------------------ | ------------------------------------------------------------ |
