@@ -5,10 +5,12 @@ using UnityEngine.Analytics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
 
 namespace UnityEditor.Rendering.Universal
 {
-    class UniversalAnalytics
+    class UniversalAnalytics : IPostprocessBuildWithReport
     {
         static bool s_EventRegistered = false;
         const int k_MaxEventsPerHour = 1000;
@@ -25,8 +27,7 @@ namespace UnityEditor.Rendering.Universal
             return s_EventRegistered;
         }
 
-        [MenuItem("Muppets/Muppets")]
-        public static void SendUniversalEvent()
+        static void SendUniversalEvent()
         {
             //The event shouldn't be able to report if this is disabled but if we know we're not going to report
             //Lets early out and not waste time gathering all the data
@@ -36,39 +37,44 @@ namespace UnityEditor.Rendering.Universal
             if (!EnableAnalytics())
                 return;
 
-            UniversalRenderPipelineAsset RendererAsset = GraphicsSettings.defaultRenderPipeline as UniversalRenderPipelineAsset;
-            ScriptableRendererData[] RendererDataList = RendererAsset.m_RendererDataList;
+            // Needd to check if this isn't null
+            UniversalRenderPipelineAsset rendererAsset = GraphicsSettings.defaultRenderPipeline as UniversalRenderPipelineAsset;
 
-            string mainLightMode = RendererAsset.mainLightRenderingMode.ToString();
-            string additionalLightMode = RendererAsset.additionalLightsRenderingMode.ToString();
-
-            HashSet<string> rendererDatas = new HashSet<string>();
-            HashSet<string> renderFeatures = new HashSet<string>();
-            int rendererDataAmount = 0;
-            int rendererFeaturesAmount = 0;
-
-            foreach (ScriptableRendererData rendererData in RendererDataList)
+            if (rendererAsset != null)
             {
-                rendererDataAmount++;
-                rendererDatas.Add(rendererData.GetType().ToString());
-                foreach (ScriptableRendererFeature rendererFeature in rendererData.rendererFeatures)
+                ScriptableRendererData[] rendererDataList = rendererAsset.m_RendererDataList;
+
+                string mainLightMode = rendererAsset.mainLightRenderingMode.ToString();
+                string additionalLightMode = rendererAsset.additionalLightsRenderingMode.ToString();
+
+                HashSet<string> rendererDatas = new HashSet<string>();
+                HashSet<string> renderFeatures = new HashSet<string>();
+                int rendererDataAmount = 0;
+                int rendererFeaturesAmount = 0;
+
+                foreach (ScriptableRendererData rendererData in rendererDataList)
                 {
-                    rendererFeaturesAmount++;
-                    renderFeatures.Add(rendererFeature.GetType().ToString());
+                    rendererDataAmount++;
+                    rendererDatas.Add(rendererData.GetType().ToString());
+                    foreach (ScriptableRendererFeature rendererFeature in rendererData.rendererFeatures)
+                    {
+                        rendererFeaturesAmount++;
+                        renderFeatures.Add(rendererFeature.GetType().ToString());
+                    }
                 }
+
+                var data = new AnalyticsData()
+                {
+                    renderer_data = String.Join(", ", rendererDatas.ToArray()),
+                    renderer_data_amount = rendererDataAmount,
+                    renderer_features = String.Join(", ", renderFeatures.ToArray()),
+                    renderer_features_amount = rendererFeaturesAmount,
+                    main_light_rendering_mode = mainLightMode,
+                    additional_light_rendering_mode = additionalLightMode,
+                };
+
+                EditorAnalytics.SendEventWithLimit(k_EventName, data);
             }
-
-            var data = new AnalyticsData()
-            {
-                renderer_data = String.Join(", ", rendererDatas.ToArray()),
-                renderer_data_amount = rendererDataAmount,
-                renderer_features = String.Join(", ", renderFeatures.ToArray()),
-                renderer_features_amount = rendererFeaturesAmount,
-                main_light_rendering_mode = mainLightMode,
-                additional_light_rendering_mode = additionalLightMode,
-            };
-
-            EditorAnalytics.SendEventWithLimit(k_EventName, data);
         }
 
         struct AnalyticsData
@@ -79,6 +85,12 @@ namespace UnityEditor.Rendering.Universal
             public int renderer_features_amount;
             public string main_light_rendering_mode;
             public string additional_light_rendering_mode;
+        }
+
+        public int callbackOrder { get; }
+        public void OnPostprocessBuild(BuildReport report)
+        {
+            SendUniversalEvent();
         }
     }
 }
