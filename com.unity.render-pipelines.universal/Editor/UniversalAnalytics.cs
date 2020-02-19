@@ -16,7 +16,7 @@ namespace UnityEditor.Rendering.Universal
         const int k_MaxEventsPerHour = 1000;
         const int k_MaxNumberOfElements = 1000;
         const string k_VendorKey = "unity.universal";
-        const string k_EventName = "uUniversalUsage";
+        const string k_EventName = "uUniversalRenderPipelineUsage";
 
         static bool EnableAnalytics()
         {
@@ -54,20 +54,23 @@ namespace UnityEditor.Rendering.Universal
 
                 foreach (ScriptableRendererData rendererData in rendererDataList)
                 {
-                    rendererDataAmount++;
-                    rendererDatas.Add(rendererData.GetType().ToString());
-                    foreach (ScriptableRendererFeature rendererFeature in rendererData.rendererFeatures)
+                    if (rendererData != null)
                     {
-                        rendererFeaturesAmount++;
-                        renderFeatures.Add(rendererFeature.GetType().ToString());
+                        rendererDataAmount++;
+                        rendererDatas.Add(rendererData.GetType().ToString());
+                        foreach (ScriptableRendererFeature rendererFeature in rendererData.rendererFeatures)
+                        {
+                            rendererFeaturesAmount++;
+                            renderFeatures.Add(rendererFeature.GetType().ToString());
+                        }
                     }
                 }
 
                 var data = new AnalyticsData()
                 {
-                    renderer_data = String.Join(", ", rendererDatas.ToArray()),
+                    renderer_data = "{"+String.Join(", ", rendererDatas.ToArray())+"}",
                     renderer_data_amount = rendererDataAmount,
-                    renderer_features = String.Join(", ", renderFeatures.ToArray()),
+                    renderer_features = "{"+String.Join(", ", renderFeatures.ToArray())+"}",
                     renderer_features_amount = rendererFeaturesAmount,
                     main_light_rendering_mode = mainLightMode,
                     additional_light_rendering_mode = additionalLightMode,
