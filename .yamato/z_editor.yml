@@ -58,6 +58,6 @@ editor:priming:{{ editor.version }}:{{ platform.os }}:
   artifacts:
     unity_revision.zip:
       paths:
-        - "unity_revision.txt"
+        - "**/**/unity_revision.txt"
 {% endfor -%}
 {% endfor %}
