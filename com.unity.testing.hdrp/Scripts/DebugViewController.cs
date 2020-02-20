@@ -39,8 +39,6 @@ public class DebugViewController : MonoBehaviour
             hdPipeline.debugDisplaySettings.SetDebugLightLayersMode(true);
             hdPipeline.debugDisplaySettings.data.lightingDebugSettings.debugLightLayersFilterMask = (DebugLightLayerFilterMode)0b10111101;
         }
-        else
-            hdPipeline.debugDisplaySettings.SetDebugLightLayersMode(false);
     }
 
     void OnDestroy()
@@ -49,7 +47,8 @@ public class DebugViewController : MonoBehaviour
         if (hdPipeline != null)
         {
             hdPipeline.debugDisplaySettings.SetDebugViewGBuffer(0);
-            hdPipeline.debugDisplaySettings.data.fullScreenDebugMode = FullScreenDebugMode.None;
+            hdPipeline.debugDisplaySettings.SetFullScreenDebugMode(FullScreenDebugMode.None);
+            hdPipeline.debugDisplaySettings.SetDebugLightLayersMode(false);
         }
     }
 }
