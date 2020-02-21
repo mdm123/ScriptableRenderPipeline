@@ -45,10 +45,6 @@ public class DebugViewController : MonoBehaviour
     {
         HDRenderPipeline hdPipeline = RenderPipelineManager.currentPipeline as HDRenderPipeline;
         if (hdPipeline != null)
-        {
-            hdPipeline.debugDisplaySettings.SetDebugViewGBuffer(0);
-            hdPipeline.debugDisplaySettings.SetFullScreenDebugMode(FullScreenDebugMode.None);
-            hdPipeline.debugDisplaySettings.SetDebugLightLayersMode(false);
-        }
+            ((IDebugData)hdPipeline.debugDisplaySettings).GetReset().Invoke();
     }
 }
