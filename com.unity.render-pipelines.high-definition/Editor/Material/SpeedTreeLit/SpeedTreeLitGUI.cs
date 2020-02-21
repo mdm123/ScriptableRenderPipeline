@@ -3,6 +3,8 @@ using UnityEngine.Rendering;
 
 // Include material common properties names
 using static UnityEngine.Rendering.HighDefinition.HDMaterialProperties;
+using UnityEditor.ShaderGraph;
+using UnityEditor.Rendering.HighDefinition.ShaderGraph;
 
 namespace UnityEditor.Rendering.HighDefinition
 {
@@ -16,7 +18,7 @@ namespace UnityEditor.Rendering.HighDefinition
             ^ SurfaceOptionUIBlock.Features.AlphaCutoff
             ^ SurfaceOptionUIBlock.Features.BackThenFrontRendering
             ^ SurfaceOptionUIBlock.Features.ShowAfterPostProcessPass;
-        
+
         MaterialUIBlockList uiBlocks = new MaterialUIBlockList
         {
             new SurfaceOptionUIBlock(MaterialUIBlock.Expandable.Base, features: surfaceOptionFeatures),
@@ -51,6 +53,92 @@ namespace UnityEditor.Rendering.HighDefinition
             if (material.HasProperty(kAddPrecomputedVelocity))
             {
                 CoreUtils.SetKeyword(material, "_ADD_PRECOMPUTED_VELOCITY", material.GetInt(kAddPrecomputedVelocity) != 0);
+            }
+
+            //material.EnableKeyword(KeywordUtil.ToKeywordString(HDSpeedTreeTarget.SpeedTreeVersion, (int)block.mAssetVersion));
+            //material.EnableKeyword("_ALPHATEST_ON");
+
+            /*
+            if (block.mAssetVersion == SpeedTreeLitOptionsUIBlock.SpeedTreeVersionEnum.SpeedTreeVer7)
+            {
+                material.EnableKeyword(KeywordUtil.ToKeywordString(HDSpeedTreeTarget.SpeedTree7GeomType, (int)block.mGeomType));
+            }
+            else if (block.mWindEnable)
+            {
+                material.EnableKeyword(KeywordUtil.ToKeywordString(HDSpeedTreeTarget.SpeedTree8WindQuality, (int)block.mWindQuality));
+            }
+            */
+
+            //CoreUtils.SetKeyword(material, "EFFECT_BILLBOARD", block.mBillboard);
+            //CoreUtils.SetKeyword(material, "BILLBOARD_FACE_CAMERA_POS", block.mBillboard && block.mBillboardFacing);
+
+            /*
+            if (material.HasProperty(SpeedTreeLitOptionsUIBlock.kWindEnable))
+            {
+                bool windOn = material.GetInt(SpeedTreeLitOptionsUIBlock.kWindEnable) != 0;
+                CoreUtils.SetKeyword(material, "ENABLE_WIND", windOn);
+                //material.EnableKeyword(KeywordUtil.ToKeywordString(HDSpeedTreeTarget.SpeedTree8WindQuality, ))
+            }
+            else
+            {
+                CoreUtils.SetKeyword(material, "ENABLE_WIND", block.mWindEnable);
+                if ((block.mAssetVersion == SpeedTreeLitOptionsUIBlock.SpeedTreeVersionEnum.SpeedTreeVer8) && (block.mWindEnable))
+                {
+                    material.EnableKeyword(KeywordUtil.ToKeywordString(HDSpeedTreeTarget.SpeedTree8WindQuality, (int)block.mWindQuality));
+                }
+                else
+                {
+                    material.EnableKeyword(KeywordUtil.ToKeywordString(HDSpeedTreeTarget.SpeedTree8WindQuality, HDSpeedTreeTarget.kNullWindQuality));
+                }
+            }
+            */
+
+            // Assume that we are SpeedTree v7 by default.
+            int treeVersion = (int)SpeedTreeLitOptionsUIBlock.SpeedTreeVersionEnum.SpeedTreeVer7;
+            if (material.HasProperty(SpeedTreeLitOptionsUIBlock.kAssetVersion))
+            {
+                treeVersion = material.GetInt(SpeedTreeLitOptionsUIBlock.kAssetVersion);
+            }
+            material.EnableKeyword(HDSpeedTreeTarget.SpeedTreeVersion.ToKeywordString(treeVersion));
+
+            // Only SpeedTree 7 assets should have a GeomType property.
+            if (material.HasProperty(SpeedTreeLitOptionsUIBlock.kGeomType) && treeVersion == 0)
+            {
+                int v = material.GetInt(SpeedTreeLitOptionsUIBlock.kGeomType);
+                material.EnableKeyword(HDSpeedTreeTarget.SpeedTree7GeomType.ToKeywordString(v));
+            }
+            else
+            {
+                material.EnableKeyword(HDSpeedTreeTarget.SpeedTree7GeomType.ToKeywordString(HDSpeedTreeTarget.kNullGeomType));
+            }
+
+            // SpeedTree 7 uses the _WindQuality property directly, but 8 generates a define for it.
+            if (material.HasProperty(SpeedTreeLitOptionsUIBlock.kWindEnable))
+            {
+                bool windOn = material.GetInt(SpeedTreeLitOptionsUIBlock.kWindEnable) != 0;
+                CoreUtils.SetKeyword(material, HDSpeedTreeTarget.EnableWind.ToKeywordString(1), windOn);
+
+                if (windOn && material.HasProperty(SpeedTreeLitOptionsUIBlock.kWindQuality) && treeVersion == 1)
+                {
+                    int quality = material.GetInt(SpeedTreeLitOptionsUIBlock.kWindQuality);
+                    material.EnableKeyword(HDSpeedTreeTarget.SpeedTree8WindQuality.ToKeywordString(quality));
+                }
+                else if (windOn && treeVersion == 0)
+                {
+                    material.EnableKeyword(HDSpeedTreeTarget.SpeedTree8WindQuality.ToKeywordString(HDSpeedTreeTarget.kNullWindQuality));
+                }
+            }
+
+            if (material.HasProperty(SpeedTreeLitOptionsUIBlock.kIsBillboard))
+            {
+                bool billboardOn = material.GetInt(SpeedTreeLitOptionsUIBlock.kIsBillboard) != 0;
+                CoreUtils.SetKeyword(material, HDSpeedTreeTarget.EnableBillboard.ToKeywordString(1), billboardOn);
+
+                if (material.HasProperty(SpeedTreeLitOptionsUIBlock.kBillboardFacing))
+                {
+                    bool billboardFacing = (material.GetInt(SpeedTreeLitOptionsUIBlock.kBillboardFacing) != 0);
+                    CoreUtils.SetKeyword(material, HDSpeedTreeTarget.BillboardFaceCam.ToKeywordString(1), billboardOn && billboardFacing);
+                }
             }
 
             /*

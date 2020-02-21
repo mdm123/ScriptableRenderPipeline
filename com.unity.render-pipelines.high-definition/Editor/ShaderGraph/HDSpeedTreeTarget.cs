@@ -14,8 +14,10 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
         public string passTemplatePath => string.Empty;
         public string sharedTemplateDirectory => $"{HDUtils.GetHDRenderPipelinePath()}Editor/ShaderGraph/Templates";
 
-        public static FieldDescriptor SpeedTreeV7Field = new FieldDescriptor("SpeedTree", "Version 7", "SPEEDTREE_V7");
-        public static FieldDescriptor SpeedTreeV8Field = new FieldDescriptor("SpeedTree", "Version 8", "SPEEDTREE_V8");
+        #region Fields
+        public static FieldDescriptor SpeedTreeV7 = new FieldDescriptor("SpeedTree Asset", "Version 7", "SPEEDTREE_V7");
+        public static FieldDescriptor SpeedTreeV8 = new FieldDescriptor("SpeedTree Asset", "Version 8", "SPEEDTREE_V8");
+        #endregion
 
         public static KeywordDescriptor SpeedTreeVersion = new KeywordDescriptor()
         {
@@ -68,13 +70,16 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 new KeywordEntry() { displayName = "Frond", referenceName="FROND" },
                 new KeywordEntry() { displayName = "Leaf", referenceName="LEAF" },
                 new KeywordEntry() { displayName = "Mesh", referenceName="MESH" },
+                new KeywordEntry() { displayName = "Null", referenceName="NULL"},       // Included as a dummy for SpeedTree 8
             }
         };
+
+        public const int kNullGeomType = 5;
 
         public static KeywordDescriptor SpeedTree8WindQuality = new KeywordDescriptor()
         {
             displayName = "Wind Quality",
-            referenceName = "WINDQUALITY",
+            referenceName = "_WINDQUALITY",
             type = KeywordType.Enum,
             definition = KeywordDefinition.ShaderFeature,
             scope = KeywordScope.Local,
@@ -86,9 +91,39 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 new KeywordEntry() { displayName = "Better", referenceName="BETTER" },
                 new KeywordEntry() { displayName = "Best", referenceName="BEST" },
                 new KeywordEntry() { displayName = "Palm", referenceName="PALM" },
+                new KeywordEntry() { displayName = "Null", referenceName="NULL" },     // Included as a dummy for SpeedTree 7
             }
         };
 
+        public const int kNullWindQuality = 6;
+
+        public static KeywordDescriptor EnableWind = new KeywordDescriptor()
+        {
+            displayName = "Enable Wind",
+            referenceName = "ENABLE_WIND",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.ShaderFeature,
+            scope = KeywordScope.Local,
+        };
+
+        public static KeywordDescriptor EnableBillboard = new KeywordDescriptor()
+        {
+            displayName = "Billboard Mode",
+            referenceName = "EFFECT_BILLBOARD",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.ShaderFeature,
+            scope = KeywordScope.Local,
+        };
+
+        public static KeywordDescriptor BillboardFaceCam = new KeywordDescriptor()
+        {
+            displayName = "Billboard Faces Camera",
+            referenceName = "BILLBOARD_FACE_CAMERA_POS",
+            type = KeywordType.Boolean,
+            definition = KeywordDefinition.ShaderFeature,
+            scope = KeywordScope.Local,
+        };
+        /*
         public static PragmaDescriptor EnableWind = new PragmaDescriptor()
         {
             value = "shader_feature_local ENABLE_WIND"
@@ -96,6 +131,12 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
         public static PragmaDescriptor EnableBillboard = new PragmaDescriptor()
         {
             value = "shader_feature_local EFFECT_BILLBOARD"
+        };
+        */
+
+        public static PragmaDescriptor EnableDebug = new PragmaDescriptor()
+        {
+            value = "enable_d3d11_debug_symbols"
         };
 
         public bool IsValid(IMasterNode masterNode)
@@ -122,14 +163,19 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 p.descriptor.keywords.Add(SpeedTreeVersion);
                 p.descriptor.keywords.Add(LodFadePercentage);
                 p.descriptor.defines.Add(SpeedTreeUpAxis, 0);
-                p.descriptor.pragmas.Add(EnableWind);
-                p.descriptor.pragmas.Add(EnableBillboard);
+                p.descriptor.keywords.Add(EnableWind);
+                p.descriptor.keywords.Add(EnableBillboard);
+                p.descriptor.keywords.Add(BillboardFaceCam);
 
-                p.descriptor.keywords.Add(SpeedTree7GeomType, new FieldCondition(SpeedTreeV7Field, true));
-                p.descriptor.keywords.Add(SpeedTree8WindQuality, new FieldCondition(SpeedTreeV8Field, true));
+                p.descriptor.keywords.Add(SpeedTree7GeomType);
+                p.descriptor.keywords.Add(SpeedTree8WindQuality);
+
+                p.descriptor.pragmas.Add(EnableDebug);
 
                 p.descriptor.includes.Add("Packages/com.unity.render-pipelines.core/ShaderLibrary/SpeedTree/SpeedTreeCommon.hlsl", IncludeLocation.Pregraph);
             }
+
+            modDescriptor.customEditorOverride = @"CustomEditor ""UnityEditor.Rendering.HighDefinition.SpeedTreeLitGUI""";
 
             return modDescriptor;
         }

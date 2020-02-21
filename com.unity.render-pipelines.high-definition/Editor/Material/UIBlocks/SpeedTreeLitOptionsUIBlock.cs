@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering.HighDefinition;
 using System.Linq;
 
 // Include material common properties names
 using static UnityEngine.Rendering.HighDefinition.HDMaterialProperties;
+using UnityEditor.Rendering.HighDefinition.ShaderGraph;
 
 namespace UnityEditor.Rendering.HighDefinition
 {
@@ -15,15 +15,50 @@ namespace UnityEditor.Rendering.HighDefinition
         {
             public const string SpeedTreeHeader = "SpeedTree Options";
 
-            public static GUIContent typeText = new GUIContent("Geometry Type", "Which type of tree geometry component is the part being shaded");
-            public static GUIContent enableWindText = new GUIContent("Enable Wind", "Whether you want the wind effect to be on or not");
-            public static GUIContent windQualityText = new GUIContent("Wind Quality", "Detail level of the wind effect");
+            public static GUIContent versionText = new GUIContent(HDSpeedTreeTarget.SpeedTreeVersion.displayName, "Major version of SpeedTree Creator for this asset.");
+            public static GUIContent typeText = new GUIContent(HDSpeedTreeTarget.SpeedTree7GeomType.displayName, "Which type of tree geometry component is the part being shaded");
+            public static GUIContent enableWindText = new GUIContent(HDSpeedTreeTarget.EnableWind.displayName, "Whether you want the wind effect to be on or not");
+            public static GUIContent windQualityText = new GUIContent(HDSpeedTreeTarget.SpeedTree8WindQuality.displayName, "Detail level of the wind effect");
             public static GUIContent billboardText = new GUIContent("Billboard", "This surface is a billboard");
             public static GUIContent billboardFacingText = new GUIContent("Billboard Camera Facing", "Factor which affects billboard's impact on shadows");
-            public static GUIContent zBiasText = new GUIContent("Depth-Only Bias", "Depth bias used on depth-only passes; clears z-fighting artifacts");
         }
 
         Expandable m_ExpandableBit;
+
+        public enum SpeedTreeVersionEnum
+        {
+            SpeedTreeVer7 = 0,
+            SpeedTreeVer8,
+        }
+
+        public enum SpeedTree7Geom
+        {
+            Branch,
+            BranchDetail,
+            Frond,
+            Leaf,
+            Mesh,
+        }
+
+        public enum WindQualityEnum
+        {
+            None,
+            Fastest,
+            Fast,
+            Better,
+            Best,
+            Palm,
+        }
+
+        //public SpeedTreeVersionEnum mAssetVersion = SpeedTreeVersionEnum.SpeedTreeVer7;
+        //public SpeedTree7Geom mGeomType = SpeedTree7Geom.Branch;
+        //public bool mWindEnable = true;
+        //public WindQualityEnum mWindQuality = WindQualityEnum.Best;
+        //public bool mBillboard = false;
+        //public bool mBillboardFacing = false;
+
+        MaterialProperty assetVersion = null;
+        public const string kAssetVersion = "_SpeedTreeVersion";
 
         MaterialProperty geomType = null;
         public const string kGeomType = "_SpeedTreeGeom";
@@ -45,6 +80,7 @@ namespace UnityEditor.Rendering.HighDefinition
 
         public override void LoadMaterialProperties()
         {
+            assetVersion = FindProperty(kAssetVersion);
             geomType = FindProperty(kGeomType);
 
             windEnable = FindProperty(kWindEnable);
@@ -56,6 +92,9 @@ namespace UnityEditor.Rendering.HighDefinition
 
         void DrawSpeedTreeInputsGUI()
         {
+            if (assetVersion != null)
+                materialEditor.ShaderProperty(assetVersion, Styles.versionText);
+
             if (geomType != null)
                 materialEditor.ShaderProperty(geomType, Styles.typeText);
 
@@ -80,7 +119,9 @@ namespace UnityEditor.Rendering.HighDefinition
             using (var header = new MaterialHeaderScope(Styles.SpeedTreeHeader, (uint)m_ExpandableBit, materialEditor))
             {
                 if (header.expanded)
+                {
                     DrawSpeedTreeInputsGUI();
+                }
             }
         }
     }

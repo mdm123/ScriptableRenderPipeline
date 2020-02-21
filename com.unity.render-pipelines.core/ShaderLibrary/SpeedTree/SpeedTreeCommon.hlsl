@@ -9,7 +9,7 @@
     #define WIND_QUALITY_BEST    4
     #define WIND_QUALITY_PALM    5
 
-#elif SPEEDTREE_V8
+#elif defined(SPEEDTREE_V8)
 
     #define GEOM_TYPE_BRANCH 0
     #define GEOM_TYPE_FROND 1
