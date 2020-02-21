@@ -290,7 +290,7 @@ Build_{{ project.name }}_OSX_OpenGLCore_Player_{{ editor.version }}:
     - ssh -i ~/.ssh/id_rsa_macmini -o "StrictHostKeyChecking=no" bokken@$BOKKEN_DEVICE_IP "bash -lc 'pip3 install --user unity-downloader-cli --extra-index-url https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple'"
     - scp -i ~/.ssh/id_rsa_macmini -o "StrictHostKeyChecking=no" -r ../ScriptableRenderPipeline/ bokken@$BOKKEN_DEVICE_IP:~/ScriptableRenderPipeline
     - scp -i ~/.ssh/id_rsa_macmini -o "StrictHostKeyChecking=no" ~/.ssh/id_rsa_macmini bokken@$BOKKEN_DEVICE_IP:~/.ssh/id_rsa_macmini
-    - scp -i ~/.ssh/id_rsa_macmini -o "StrictHostKeyChecking=no" -r ~/ScriptableRenderPipeline/**/unity_revision.txt bokken@$BOKKEN_DEVICE_IP:~/unity_revision.txt
+    #- scp -i ~/.ssh/id_rsa_macmini -o "StrictHostKeyChecking=no" -r ~/ScriptableRenderPipeline/**/unity_revision.txt bokken@$BOKKEN_DEVICE_IP:~/unity_revision.txt
 
     - ssh -i ~/.ssh/id_rsa_macmini -o "StrictHostKeyChecking=no" bokken@$BOKKEN_DEVICE_IP '/Users/bokken/Library/Python/3.7/bin/unity-downloader-cli --source-file unity_revision.txt {% for component in platform.components %}-c {{ component }} {% endfor %}--wait --published-only'
 
