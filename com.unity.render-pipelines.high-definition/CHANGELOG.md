@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added the Tint parameter to Sky Colored Fog.
 - Added of Screen Space Reflections for Transparent materials
 - Added a fallback for ray traced area light shadows in case the material is forward or the lit mode is forward.
-- Added warning and workaround instructions if XR single-pass is enabled after the first frame with XR SDK.
+- Added a warning and workaround instructions that appear when you enable XR single-pass after the first frame with the XR SDK.
 
 ### Fixed
 - Update documentation of HDRISky-Backplate, precise how to have Ambient Occlusion on the Backplate
