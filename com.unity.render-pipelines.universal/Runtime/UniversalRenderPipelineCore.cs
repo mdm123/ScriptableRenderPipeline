@@ -289,8 +289,8 @@ namespace UnityEngine.Rendering.Universal
             }
             else
             {
-				bool use32BitHDR = !needsAlpha && RenderingUtils.SupportsGraphicsFormat(GraphicsFormat.B10G11R11_UFloatPack32, FormatUsage.Linear | FormatUsage.Render);
-	            GraphicsFormat hdrFormat = (use32BitHDR) ? GraphicsFormat.B10G11R11_UFloatPack32 : GraphicsFormat.R16G16B16A16_SFloat;
+                bool use32BitHDR = !needsAlpha && RenderingUtils.SupportsGraphicsFormat(GraphicsFormat.B10G11R11_UFloatPack32, FormatUsage.Linear | FormatUsage.Render);
+                GraphicsFormat hdrFormat = (use32BitHDR) ? GraphicsFormat.B10G11R11_UFloatPack32 : GraphicsFormat.R16G16B16A16_SFloat;
 
                 desc.graphicsFormat = isHdrEnabled ? hdrFormat : renderTextureFormatDefault;
                 desc.depthBufferBits = 32;
