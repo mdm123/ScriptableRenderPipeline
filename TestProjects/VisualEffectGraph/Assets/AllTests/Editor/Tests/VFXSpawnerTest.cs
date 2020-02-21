@@ -272,6 +272,68 @@ namespace UnityEditor.VFX.Test
             yield return new ExitPlayMode();
         }
 
+        //Fix case 1217876
+        [UnityTest]
+        public IEnumerator Change_Fixed_Time_Step_To_A_Large_Value_Then_Back_To_Default()
+        {
+            yield return new EnterPlayMode();
+
+            VisualEffect vfxComponent;
+            GameObject cameraObj, gameObj;
+            VFXGraph graph;
+            CreateAssetAndComponent(3615.0f, "OnPlay", out graph, out vfxComponent, out gameObj, out cameraObj);
+
+            var previousCaptureFrameRate = Time.captureFramerate;
+            var previousFixedTimeStep = UnityEngine.VFX.VFXManager.fixedTimeStep;
+            var previousMaxDeltaTime = UnityEngine.VFX.VFXManager.maxDeltaTime;
+
+            //Set default
+            UnityEngine.VFX.VFXManager.fixedTimeStep = 0.01f;
+
+            var maxFrame = 64;
+            Time.captureFramerate = 42;
+            while (Mathf.Abs(Time.deltaTime - Time.captureDeltaTime) > 0.0001f && --maxFrame > 0)
+                yield return null; //wait capture deltaTime setting effective
+
+            //Change_Fixed_Time_Step_To_A_Large_Value
+            UnityEngine.VFX.VFXManager.fixedTimeStep = 0.1f;
+            UnityEngine.VFX.VFXManager.maxDeltaTime = 0.05f;
+
+            //wait a few frame
+            for (int frame = 0; frame < 2; ++frame)
+                yield return null;
+
+            //Then_Back_To_Default (actually, a small value)
+            UnityEngine.VFX.VFXManager.fixedTimeStep = 0.01f;
+
+            for (int frame = 0; frame < 4; ++frame)
+                yield return null;
+
+            //Check what is the actual minimal delta time (could be check with an average too)
+            float sumDeltaTime = 0.0f;
+            int frameCount = 10;
+            for (int frame = 0; frame < frameCount; ++frame)
+            {
+                var spawnState = VisualEffectUtility.GetSpawnerState(vfxComponent, 0);
+                sumDeltaTime += spawnState.deltaTime;
+                yield return null;
+            }
+            Assert.AreEqual((double)Time.deltaTime, (double)Time.captureDeltaTime, 0.0001);
+            float epsilon = 10e-5f;
+            Assert.Less(sumDeltaTime, Time.deltaTime * frameCount + epsilon); //If opposite, effect is going faster than deltaTime
+            Debug.Log(sumDeltaTime);
+
+            Time.captureFramerate = previousCaptureFrameRate;
+            UnityEngine.VFX.VFXManager.fixedTimeStep = previousFixedTimeStep;
+            UnityEngine.VFX.VFXManager.maxDeltaTime = previousMaxDeltaTime;
+
+            maxFrame = 64;
+            while (Mathf.Abs(Time.deltaTime - Time.captureDeltaTime) > 0.0001f && --maxFrame > 0)
+                yield return null;
+
+            yield return new ExitPlayMode();
+        }
+
         [Retry(3)]
         [UnityTest]
         public IEnumerator Create_Asset_And_Component_Spawner_Plugging_OnStop_Into_Start_Input_Flow()
