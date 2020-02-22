@@ -30,7 +30,7 @@ There are multiple methods that you can use to control the resolution of your re
 
 ## Enable VR single-pass after startup
 
-Due to some technical limitations that will be solved in later versions, you need the following code in your script if your app is not booting directly in VR mode:
+Due to some technical limitations that will be resolved in later versions, you need the following code in your script if your app does not boot directly in VR mode:
 
 ```csharp
 private void Awake()
