@@ -33,7 +33,7 @@ namespace UnityEditor.Rendering.Universal
         private SerializedProperty m_RenderPasses;
         private SerializedProperty m_RenderPassMap;
         private SerializedProperty m_FalseBool;
-        public bool falseBool;
+        [SerializeField] private bool falseBool;
 
         private void OnEnable()
         {
@@ -90,6 +90,7 @@ namespace UnityEditor.Rendering.Universal
 
             if (obj != null)
             {
+                var editor = CreateEditor(obj);
                 var serializedFeature = new SerializedObject(obj);
                 // Foldout header
                 var displayContent = CoreEditorUtils.DrawHeaderToggle(
@@ -100,7 +101,6 @@ namespace UnityEditor.Rendering.Universal
                 );
 
                 // ObjectEditor
-                var editor = CreateEditor(obj);
                 if (displayContent)
                 {
                     EditorGUI.BeginChangeCheck();
@@ -108,7 +108,7 @@ namespace UnityEditor.Rendering.Universal
                     propertyName.stringValue = ValidateName(EditorGUILayout.DelayedTextField(Styles.PassNameField, propertyName.stringValue));
                     if (EditorGUI.EndChangeCheck())
                         serializedFeature.ApplyModifiedProperties();
-                    editor.OnInspectorGUI();
+                    editor.DrawDefaultInspector();
                 }
 
                 //Save the changed data
