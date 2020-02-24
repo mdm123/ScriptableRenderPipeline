@@ -121,7 +121,8 @@ namespace UnityEditor.ShaderGraph
                     return;
 
                 m_NormalDropOffSpace = value;
-                updateNormalSlot = true;
+                if(!IsSlotConnected(NormalSlotId))
+                    updateNormalSlot = true;
                 UpdateNodeAfterDeserialization();
                 Dirty(ModificationScope.Topological);
             }
