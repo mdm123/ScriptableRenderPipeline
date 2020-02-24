@@ -178,7 +178,6 @@ namespace UnityEngine.Rendering.HighDefinition
         private RTHandle m_FinalHalfRes;
 
         private bool m_RunningFullRes = false;
-        private Vector4 m_HistoryInfo = new Vector4();
 
         readonly HDRaytracingAmbientOcclusion m_RaytracingAmbientOcclusion = new HDRaytracingAmbientOcclusion();
 
@@ -580,7 +579,6 @@ namespace UnityEngine.Rendering.HighDefinition
                     {
                         var output = m_RunningFullRes ? m_AmbientOcclusionTex : m_FinalHalfRes;
                         DenoiseAO(aoParameters, m_PackedDataTex, m_PackedDataBlurred, currentHistory, historyOutput, output, cmd);
-                        m_HistoryInfo = aoParameters.aoBufferInfo;
                     }
 
                     if (!m_RunningFullRes)
