@@ -18,6 +18,61 @@ To make all Cameras require depth, enable the the `Depth Texture` option in the 
 ## Sampling shadows from the Main Light
 In previous versions of URP, if shadow cascades were enabled for the main Light, shadows would be resolved in a screen space pass. The pipeline now always resolves shadows while rendering opaques or transparent objects. This allows for consistency and solved many issues regarding shadows.
 
+Four new defines have been added to the URP shaders:
+
+MAIN_LIGHT_CALCULATE_SHADOWS
+Defined when shadows on main light are enabled and shadows enabled in the material
+
+ADDITIONAL_LIGHT_CALCULATE_SHADOWS
+Defined when shadows on additional lights are enabled and shadows enabled in the material
+
+REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR
+Defined when shadows on main light are enabled, shadows enabled in the material and cascades set to none. Used to determine whether shadow coordinates need to be passed from the vertex shader to fragment shader.
+
+REQUIRES_WORLD_SPACE_POS_INTERPOLATOR
+Defined when shadows there are additional lights or shadow cascades set to two or four. 
+Used to determine whether the world space position needs to be passed from the vertex shader to fragment shader.
+
+These defines then get used in the following places.
+
+In Varyings struct that gets passed from vertex to fragment:
+```
+#if defined(REQUIRES_WORLD_SPACE_POS_INTERPOLATOR)
+    float3 positionWS               : TEXCOORD2;
+#endif
+
+#if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
+    float4 shadowCoord              : TEXCOORD7;
+#endif
+```
+
+In vertex shaders:
+```
+#if defined(REQUIRES_WORLD_SPACE_POS_INTERPOLATOR)
+    output.positionWS = vertexInput.positionWS;
+#endif
+
+#if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
+    output.shadowCoord = GetShadowCoord(vertexInput);
+#endif
+```
+
+In fragment shaders
+```
+#if defined(REQUIRES_WORLD_SPACE_POS_INTERPOLATOR)
+    inputData.positionWS = input.positionWS;
+#endif
+
+#if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
+    inputData.shadowCoord = input.shadowCoord;
+#elif defined(MAIN_LIGHT_CALCULATE_SHADOWS)
+    inputData.shadowCoord = TransformWorldToShadowCoord(inputData.positionWS);
+#else
+    inputData.shadowCoord = float4(0, 0, 0, 0);
+#endif
+```
+
+
 If have custom hlsl shaders and sample `_ScreenSpaceShadowmapTexture` texture, you must upgrade them to sample shadows by using the `GetMainLight` function instead. 
 
 For example:
