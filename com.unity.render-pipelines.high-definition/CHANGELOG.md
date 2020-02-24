@@ -410,6 +410,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fixed missing initialization of input params in Blit for VR.
 - Fix Inf source in LTC for area lights.
 - Fixed a bug related to ray traced area light shadow history.
+- Fixed a leak in the sky system.
 
 ### Changed
 - Color buffer pyramid is not allocated anymore if neither refraction nor distortion are enabled
@@ -494,6 +495,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Transform result from CIE XYZ to sRGB color space in EvalSensitivity for iridescence.
 - Hide the Probes section in the Renderer editos because it was unused.
 - Moved BeginCameraRendering callback right before culling.
+- Renamed the cubemap used for diffuse convolution to a more explicit name for the memory profiler.
 
 ## [7.1.1] - 2019-09-05
 
