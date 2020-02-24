@@ -273,8 +273,14 @@ namespace UnityEditor.VFX.Test
         }
 
         //Fix case 1217876
+        static VFXTimeModeTest[] s_Change_Fixed_Time_Step_To_A_Large_Value_Then_Back_To_Default = new[]
+{
+            new VFXTimeModeTest("FixedDeltaTime", (uint)VFXUpdateMode.FixedDeltaTime, 0u, 0),
+            new VFXTimeModeTest("FixedDeltaTime_And_IgnoreTimeScale", (uint)VFXUpdateMode.IgnoreTimeScale,0u, 0),
+        };
+
         [UnityTest]
-        public IEnumerator Change_Fixed_Time_Step_To_A_Large_Value_Then_Back_To_Default()
+        public IEnumerator Change_Fixed_Time_Step_To_A_Large_Value_Then_Back_To_Default([ValueSource("s_Change_Fixed_Time_Step_To_A_Large_Value_Then_Back_To_Default")] VFXTimeModeTest timeMode)
         {
             yield return new EnterPlayMode();
 
@@ -282,6 +288,8 @@ namespace UnityEditor.VFX.Test
             GameObject cameraObj, gameObj;
             VFXGraph graph;
             CreateAssetAndComponent(3615.0f, "OnPlay", out graph, out vfxComponent, out gameObj, out cameraObj);
+            graph.GetResource().updateMode = (VFXUpdateMode)timeMode.vfxUpdateMode;
+            AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(graph));
 
             var previousCaptureFrameRate = Time.captureFramerate;
             var previousFixedTimeStep = UnityEngine.VFX.VFXManager.fixedTimeStep;
@@ -291,45 +299,33 @@ namespace UnityEditor.VFX.Test
             UnityEngine.VFX.VFXManager.fixedTimeStep = 0.01f;
 
             var maxFrame = 64;
-            Time.captureFramerate = 42;
+            Time.captureFramerate = 10;
             while (Mathf.Abs(Time.deltaTime - Time.captureDeltaTime) > 0.0001f && --maxFrame > 0)
                 yield return null; //wait capture deltaTime setting effective
 
             //Change_Fixed_Time_Step_To_A_Large_Value
-            UnityEngine.VFX.VFXManager.fixedTimeStep = 0.1f;
-            UnityEngine.VFX.VFXManager.maxDeltaTime = 0.05f;
+            UnityEngine.VFX.VFXManager.fixedTimeStep = 2.0f;
+            UnityEngine.VFX.VFXManager.maxDeltaTime = 5.0f;
 
             //wait a few frame
-            for (int frame = 0; frame < 2; ++frame)
+            for (int frame = 0; frame < 6; ++frame)
                 yield return null;
 
-            //Then_Back_To_Default (actually, a small value)
-            UnityEngine.VFX.VFXManager.fixedTimeStep = 0.01f;
+            //Then_Back_To_Default (actually, a really small value)
+            Time.captureFramerate = 600; //Not round delta time, easily failing on small value
+            UnityEngine.VFX.VFXManager.fixedTimeStep = 0.001f; //Can be 0.01f too
 
-            for (int frame = 0; frame < 4; ++frame)
-                yield return null;
-
-            //Check what is the actual minimal delta time (could be check with an average too)
-            float sumDeltaTime = 0.0f;
-            int frameCount = 10;
-            for (int frame = 0; frame < frameCount; ++frame)
+            //Failure should occurs within these frame
+            for (int frame = 0; frame < 8; ++frame)
             {
                 var spawnState = VisualEffectUtility.GetSpawnerState(vfxComponent, 0);
-                sumDeltaTime += spawnState.deltaTime;
+                Assert.AreNotEqual(spawnState.deltaTime, UnityEngine.VFX.VFXManager.maxDeltaTime); //Overflow in step count
                 yield return null;
             }
-            Assert.AreEqual((double)Time.deltaTime, (double)Time.captureDeltaTime, 0.0001);
-            float epsilon = 10e-5f;
-            Assert.Less(sumDeltaTime, Time.deltaTime * frameCount + epsilon); //If opposite, effect is going faster than deltaTime
-            Debug.Log(sumDeltaTime);
 
             Time.captureFramerate = previousCaptureFrameRate;
             UnityEngine.VFX.VFXManager.fixedTimeStep = previousFixedTimeStep;
             UnityEngine.VFX.VFXManager.maxDeltaTime = previousMaxDeltaTime;
-
-            maxFrame = 64;
-            while (Mathf.Abs(Time.deltaTime - Time.captureDeltaTime) > 0.0001f && --maxFrame > 0)
-                yield return null;
 
             yield return new ExitPlayMode();
         }
