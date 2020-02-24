@@ -123,7 +123,7 @@ namespace UnityEngine.Rendering.HighDefinition
 
                 var defaultVolume = HDRenderPipeline.GetOrCreateDefaultVolume();
                 defaultVolume.sharedProfile.TryGet(skyType, out SkySettings defaultSky);
-                var defaultSkyParameters = defaultSky.parameters;
+                var defaultSkyParameters = defaultSky != null ? defaultSky.parameters : null; // Can be null if the profile does not contain the component.
 
                 // Seems to inexplicably happen sometimes on domain reload.
                 if (profileSkyParameters == null)
@@ -139,8 +139,8 @@ namespace UnityEngine.Rendering.HighDefinition
                     {
                         newSkyParameters[i].SetValue(profileSkyParameters[i]);
                     }
-                    // Fallback to the default profile if values are overriden in there.
-                    else if (defaultSkyParameters[i].overrideState == true)
+                    // Fallback to the default profile if values are overridden in there.
+                    else if (defaultSkyParameters != null && defaultSkyParameters[i].overrideState == true)
                     {
                         newSkyParameters[i].SetValue(defaultSkyParameters[i]);
                     }
