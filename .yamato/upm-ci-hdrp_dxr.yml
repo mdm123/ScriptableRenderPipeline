@@ -1,12 +1,8 @@
 editors:
   - version: 2020.1
-    cmd: -u 2020.1/staging
   - version: fast-2020.1
-    cmd: -u 2020.1/staging --fast
   - version: trunk
-    cmd: -u trunk
   - version: fast-trunk
-    cmd: -u trunk --fast
 platforms:
   - name: Win
     os: windows
@@ -64,6 +60,8 @@ win_apis:
     {% else %}
     - cd TestProjects/{{ project.folder }} && utr\utr {{ testplatform.args }} --extra-editor-arg="{{ win_api.cmd }}" --testproject=. --editor-location=.Editor --artifacts_path=upm-ci~/test-results
     {% endif %}
+  dependencies:
+    - .yamato/z_editor.yml#editor:priming:{{ editor.version }}:{{ platform.os }}
   artifacts:
     logs:
       paths:
