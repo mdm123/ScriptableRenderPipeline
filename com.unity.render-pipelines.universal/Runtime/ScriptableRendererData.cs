@@ -107,7 +107,7 @@ namespace UnityEngine.Rendering.Universal
             {
                 if (m_RendererFeatures[i] == null)
                 {
-                    if (mapValid)
+                    if (mapValid && m_RendererFeatureMap[i] != 0)
                     {
                         var localId = m_RendererFeatureMap[i];
                         loadedAssets.TryGetValue(localId, out var asset);
