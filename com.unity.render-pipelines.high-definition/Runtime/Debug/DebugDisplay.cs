@@ -786,7 +786,7 @@ namespace UnityEngine.Rendering.HighDefinition
                         {
                             container.children.Add(new DebugUI.BoolField
                             {
-                                displayName = "Match Light's Shadow Layers",
+                                displayName = "Switch to  Light's Shadow Layers",
                                 getter = () => data.lightingDebugSettings.debugLightLayersUseSelection == 2,
                                 setter = value => data.lightingDebugSettings.debugLightLayersUseSelection = (value ? 2 : 1),
                                 flags = DebugUI.Flags.EditorOnly,
