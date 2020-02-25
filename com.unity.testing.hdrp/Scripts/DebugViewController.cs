@@ -37,7 +37,7 @@ public class DebugViewController : MonoBehaviour
         if (lightlayers)
         {
             hdPipeline.debugDisplaySettings.SetDebugLightLayersMode(true);
-            hdPipeline.debugDisplaySettings.data.lightingDebugSettings.debugLightLayersFilterMask = (DebugLightLayerFilterMode)0b10111101;
+            hdPipeline.debugDisplaySettings.data.lightingDebugSettings.debugLightLayersFilterMask = (DebugLightLayersMask)0b10111101;
         }
     }
 
