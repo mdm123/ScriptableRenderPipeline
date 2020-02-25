@@ -33,7 +33,8 @@ namespace UnityEditor.Rendering.Universal
         private SerializedProperty m_RenderPasses;
         private SerializedProperty m_RenderPassMap;
         private SerializedProperty m_FalseBool;
-        [SerializeField] private bool falseBool;
+        private bool m_SaveAsset;
+        [SerializeField] private bool falseBool = false;
 
         private void OnEnable()
         {
@@ -52,6 +53,13 @@ namespace UnityEditor.Rendering.Universal
 
             if(serializedObject.hasModifiedProperties)
                 serializedObject.ApplyModifiedProperties();
+
+            if (m_SaveAsset)
+            {
+                m_SaveAsset = false;
+                EditorUtility.SetDirty(target);
+                AssetDatabase.SaveAssets();
+            }
         }
 
         private void DrawRendererFeatureList()
@@ -93,12 +101,15 @@ namespace UnityEditor.Rendering.Universal
                 var editor = CreateEditor(obj);
                 var serializedFeature = new SerializedObject(obj);
                 // Foldout header
+                EditorGUI.BeginChangeCheck();
                 var displayContent = CoreEditorUtils.DrawHeaderToggle(
                     title,
                     prop,
-                    serializedFeature.FindProperty("enabled"),
+                    serializedFeature.FindProperty("m_Active"),
                     pos => OnContextClick(pos, index)
                 );
+                if (EditorGUI.EndChangeCheck())
+                    m_SaveAsset = true;
 
                 // ObjectEditor
                 if (displayContent)
@@ -107,16 +118,14 @@ namespace UnityEditor.Rendering.Universal
                     var propertyName = serializedFeature.FindProperty("m_Name");
                     propertyName.stringValue = ValidateName(EditorGUILayout.DelayedTextField(Styles.PassNameField, propertyName.stringValue));
                     if (EditorGUI.EndChangeCheck())
-                        serializedFeature.ApplyModifiedProperties();
+                        m_SaveAsset = true;
                     editor.DrawDefaultInspector();
                 }
 
                 //Save the changed data
                 if (!serializedFeature.hasModifiedProperties) return;
-
                 serializedFeature.ApplyModifiedProperties();
-                EditorUtility.SetDirty(obj);
-                AssetDatabase.SaveAssets();
+                m_SaveAsset = true;
             }
             else
             {
@@ -181,7 +190,6 @@ namespace UnityEditor.Rendering.Universal
             if (EditorUtility.IsPersistent(target))
                 AssetDatabase.AddObjectToAsset(component, target);
             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(component, out var guid, out long localId);
-            Debug.Log($"new feature | guid={guid} | localID={localId}");
 
             // Grow the list first, then add - that's how serialized lists work in Unity
             m_RenderPasses.arraySize++;
@@ -198,8 +206,7 @@ namespace UnityEditor.Rendering.Universal
             // Force save / refresh
             if (EditorUtility.IsPersistent(target))
             {
-                EditorUtility.SetDirty(target);
-                AssetDatabase.SaveAssets();
+                m_SaveAsset = true;
             }
             serializedObject.ApplyModifiedProperties();
         }
@@ -223,8 +230,7 @@ namespace UnityEditor.Rendering.Universal
             if (component != null) { Undo.DestroyObjectImmediate(component); }
 
             // Force save / refresh
-            EditorUtility.SetDirty(target);
-            AssetDatabase.SaveAssets();
+            m_SaveAsset = true;
         }
 
         private void MoveComponent(int id, int offset)
@@ -235,8 +241,7 @@ namespace UnityEditor.Rendering.Universal
             m_RenderPassMap.MoveArrayElement(id, id + offset);
             serializedObject.ApplyModifiedProperties();
             // Force save / refresh
-            EditorUtility.SetDirty(target);
-            AssetDatabase.SaveAssets();
+            m_SaveAsset = true;
         }
 
         private string GetMenuNameFromType(Type type)

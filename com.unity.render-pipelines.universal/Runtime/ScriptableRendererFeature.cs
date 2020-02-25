@@ -10,7 +10,12 @@ namespace UnityEngine.Rendering.Universal
     [ExcludeFromPreset]
     [MovedFrom("UnityEngine.Rendering.LWRP")] public abstract class ScriptableRendererFeature : ScriptableObject
     {
-        [SerializeField, HideInInspector] protected internal bool enabled = true;
+        [SerializeField, HideInInspector] private bool m_Active = true;
+        /// <summary>
+        /// This returns the active state of this ScriptableRenderFeature, which is set using ScriptableRenderFeature.SetActive.
+        /// </summary>
+        public bool isActive => m_Active;
+
         /// <summary>
         /// Initializes this feature's resources. This is called every time serialization happens.
         /// </summary>
@@ -32,6 +37,16 @@ namespace UnityEngine.Rendering.Universal
         void OnValidate()
         {
             Create();
+        }
+
+        /// <summary>
+        /// Activates/Deactivates the ScriptableRenderFeature, depending on the given true or false value.
+        /// While active this feature will be added to the renderer it is attached to, and will be skipped when inactive.
+        /// </summary>
+        /// <param name="active">Activate or deactivate the ScriptableRenderFeature, where true activates the ScriptableRenderFeature and false deactivates the ScriptableRenderFeature.</param>
+        public void SetActive(bool active)
+        {
+            m_Active = active;
         }
     }
 }

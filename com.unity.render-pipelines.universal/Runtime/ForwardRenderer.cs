@@ -130,7 +130,7 @@ namespace UnityEngine.Rendering.Universal
 
                 for (int i = 0; i < rendererFeatures.Count; ++i)
                 {
-                    if(rendererFeatures[i].enabled)
+                    if(rendererFeatures[i].isActive)
                         rendererFeatures[i].AddRenderPasses(this, ref renderingData);
                 }
 
@@ -205,7 +205,8 @@ namespace UnityEngine.Rendering.Universal
 
             for (int i = 0; i < rendererFeatures.Count; ++i)
             {
-                rendererFeatures[i].AddRenderPasses(this, ref renderingData);
+                if(rendererFeatures[i].isActive)
+                    rendererFeatures[i].AddRenderPasses(this, ref renderingData);
             }
 
             int count = activeRenderPassQueue.Count;
