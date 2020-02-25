@@ -25,7 +25,9 @@ void GetSurfaceAndBuiltinData(FragInputs input, float3 V, inout PositionInputs p
     builtinData.opacity = alpha;
 
 #if defined(DEBUG_DISPLAY)
-    // For Light Layers Visualization debug mode
+    // Light Layers are currently not used for the Unlit shader (because it is not lit)
+    // But Unlit objects do cast shadows according to their rendering layer mask, which is what we want to
+    // display in the light layers visualization mode, therefore we need the renderingLayers
     builtinData.renderingLayers = _EnableLightLayers ? asuint(unity_RenderingLayer.x) : DEFAULT_LIGHT_LAYERS;
 #endif
 

@@ -2230,22 +2230,6 @@ namespace UnityEngine.Rendering.HighDefinition
 #endif
                 }
 
-#if UNITY_EDITOR
-                // Get light layers from selected light for debug
-                if (UnityEditor.Selection.activeGameObject == lightComponent.gameObject)
-                {
-                    debugDisplaySettings.data.lightingDebugSettings.debugLightLayersSelection = (int)additionalLightData.GetLightLayers();
-
-                    if (!additionalLightData.linkShadowLayers)
-                    {
-                        additionalLightData.linkShadowLayers = true;
-                        int shadowLayers = (int)additionalLightData.GetLightLayers();
-                        debugDisplaySettings.data.lightingDebugSettings.debugLightLayersSelection |= (shadowLayers << 8) | 0x10000;
-                        additionalLightData.linkShadowLayers = false;
-                    }
-                }
-#endif
-
                 // Directional rendering side, it is separated as it is always visible so no volume to handle here
                 if (gpuLightType == GPULightType.Directional)
                 {

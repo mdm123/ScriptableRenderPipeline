@@ -84,24 +84,20 @@ void GetBuiltinDataDebug(uint paramId, BuiltinData builtinData, PositionInputs p
         result = float3((builtinData.distortion / (abs(builtinData.distortion) + 1) + 1) * 0.5, 0.5);
         break;
     case DEBUGVIEW_BUILTIN_BUILTINDATA_RENDERING_LAYERS:
-        uint maxLayers =  32;
-        int lightLayers = builtinData.renderingLayers;
-        result = float3(0, 0, 0);
-
-        if (_DebugLightLayersMask & 0x100) // Light layers debug only
-        {
-            maxLayers = 8;
-            lightLayers = (lightLayers & _DebugLightLayersMask) & 0xFF;
-        }
+        // Only 8 first rendering layers are currently in use (used by light layers)
+        // This mode shows only those layers
 
         uint stripeSize = 8;
+        int lightLayers = (builtinData.renderingLayers & _DebugLightLayersMask) & 0xFF;
         uint layerId = 0, layerCount = countbits(lightLayers);
-        for (uint i = 0; (i < maxLayers) && (layerId < layerCount); i++)
+
+        result = float3(0, 0, 0);
+        for (uint i = 0; i < 8; i++)
         {
             if (lightLayers & (1 << i))
             {
                 if ((posInput.positionSS.y / stripeSize) % layerCount == layerId)
-                    result = i < 8 ? _DebugLightLayersColors[i].xyz : GetIndexColor(0);
+                    result = _DebugRenderingLayersColors[i].xyz;
                 layerId++;
             }
         }
