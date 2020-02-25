@@ -172,7 +172,7 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <summary>True if Light Layers Visualization is enabled.</summary>
         public bool                 debugLightLayers = false;
         /// <summary>1 if Light Layers Visualization uses selected light, 2 if uses light's shadow layers.</summary>
-        public int                 debugLightLayersUseSelection = 0;
+        public int                  debugLightLayersUseSelection = 0;
         /// <summary>
         /// First 8 bits are the Light Layers of the selected light.
         /// Next 8 bits are the shadow Light Layers of the selected light.
@@ -181,6 +181,8 @@ namespace UnityEngine.Rendering.HighDefinition
         public int                  debugLightLayersSelection = 0;
         /// <summary>Current Light Layers Filtering mode.</summary>
         public DebugLightLayerFilterMode debugLightLayersFilterMask = (DebugLightLayerFilterMode)(-1); // Select Everything by default
+        /// <summary>Light Layers Debug Colors.</summary>
+        public Vector4[]            debugLightLayersColors = GetDefaultColorPalette();
         /// <summary>Current Shadow Maps debug mode.</summary>
         public ShadowMapDebugMode   shadowDebugMode = ShadowMapDebugMode.None;
         /// <summary>True if Shadow Map debug mode should be displayed for the currently selected light.</summary>
@@ -272,5 +274,16 @@ namespace UnityEngine.Rendering.HighDefinition
             return debugLightingMode != DebugLightingMode.None && debugLightingMode != DebugLightingMode.MatcapView;
         }
 
+        internal static Vector4[] GetDefaultColorPalette() => new Vector4[]
+            {
+                new Vector4(230, 159, 0) / 255,
+                new Vector4(86, 180, 233) / 255,
+                new Vector4(255, 182, 291) / 255,
+                new Vector4(0, 158, 115) / 255,
+                new Vector4(240, 228, 66) / 255,
+                new Vector4(0, 114, 178) / 255,
+                new Vector4(213, 94, 0) / 255,
+                new Vector4(170, 68, 170) / 255
+            };
     }
 }

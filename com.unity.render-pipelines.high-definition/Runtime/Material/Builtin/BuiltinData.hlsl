@@ -101,7 +101,7 @@ void GetBuiltinDataDebug(uint paramId, BuiltinData builtinData, PositionInputs p
             if (lightLayers & (1 << i))
             {
                 if ((posInput.positionSS.y / stripeSize) % layerCount == layerId)
-                    result = GetIndexColor(i); // NOTE: GetIndexColor works only for 0 <= i < 16
+                    result = i < 8 ? _DebugLightLayersColors[i] : GetIndexColor(0);
                 layerId++;
             }
         }

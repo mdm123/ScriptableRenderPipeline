@@ -809,6 +809,20 @@ namespace UnityEngine.Rendering.HighDefinition
                         container.children.Add(field);
                     }
 
+                    var layersColor = new DebugUI.Foldout() { displayName = "Layers Color", flags = DebugUI.Flags.EditorOnly };
+                    for (int i = 0; i < 8; i++)
+                    {
+                        int index = i;
+                        var asset = (RenderPipelineManager.currentPipeline as HDRenderPipeline).asset;
+                        layersColor.children.Add( new DebugUI.ColorField {
+                            displayName = asset.renderingLayerMaskNames[i],
+                            flags = DebugUI.Flags.EditorOnly,
+                            getter = () => data.lightingDebugSettings.debugLightLayersColors[index],
+                            setter = value => data.lightingDebugSettings.debugLightLayersColors[index] = value
+                        });
+                    }
+
+                    container.children.Add(layersColor);
                     lighting.children.Add(container);
                 }
                 list.Add(lighting);
