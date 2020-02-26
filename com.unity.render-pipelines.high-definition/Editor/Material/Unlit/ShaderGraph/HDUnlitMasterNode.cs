@@ -12,6 +12,7 @@ using UnityEngine.Rendering.HighDefinition;
 using UnityEditor.ShaderGraph.Drawing.Inspector;
 using UnityEditor.ShaderGraph.Internal;
 using UnityEngine.Rendering;
+using UnityEditor.Rendering.HighDefinition.ShaderGraph;
 
 // Include material common properties names
 using static UnityEngine.Rendering.HighDefinition.HDMaterialProperties;
@@ -20,21 +21,19 @@ namespace UnityEditor.Rendering.HighDefinition
 {
     [Serializable]
     [FormerName("UnityEditor.Experimental.Rendering.HDPipeline.HDUnlitMasterNode")]
-    [Title("Master", "Unlit (HDRP)")]
-    class HDUnlitMasterNode : MasterNode<IHDUnlitSubShader>, IMayRequirePosition, IMayRequireNormal, IMayRequireTangent
+    [Title("Master", "HDRP/Unlit")]
+    class HDUnlitMasterNode : AbstractMaterialNode, IMasterNode, IHasSettings, IMayRequirePosition, IMayRequireNormal, IMayRequireTangent
     {
         public const string ColorSlotName = "Color";
         public const string AlphaSlotName = "Alpha";
         public const string AlphaClipThresholdSlotName = "AlphaClipThreshold";
         public const string DistortionSlotName = "Distortion";
-        public const string DistortionSlotDisplayName = "Distortion Vector";
         public const string DistortionBlurSlotName = "DistortionBlur";
         public const string PositionSlotName = "Vertex Position";
         public const string PositionSlotDisplayName = "Vertex Position";
         public const string EmissionSlotName = "Emission";
         public const string VertexNormalSlotName = "Vertex Normal";
         public const string VertexTangentSlotName = "Vertex Tangent";
-        public const string ShadowTintSlotName = "Shadow Tint";
 
         public const int ColorSlotId = 0;
         public const int AlphaSlotId = 7;
@@ -45,7 +44,6 @@ namespace UnityEditor.Rendering.HighDefinition
         public const int EmissionSlotId = 12;
         public const int VertexNormalSlotId = 13;
         public const int VertexTangentSlotId = 14;
-        public const int ShadowTintSlotId = 15;
 
         // Don't support Multiply
         public enum AlphaModeLit
@@ -229,7 +227,7 @@ namespace UnityEditor.Rendering.HighDefinition
                 if (m_DoubleSided == value.isOn)
                     return;
                 m_DoubleSided = value.isOn;
-                Dirty(ModificationScope.Topological);
+                Dirty(ModificationScope.Graph);
             }
         }
 
@@ -296,28 +294,16 @@ namespace UnityEditor.Rendering.HighDefinition
             }
         }
 
-        [SerializeField]
-        bool m_EnableShadowMatte = false;
-
-        public ToggleData enableShadowMatte
-        {
-            get { return new ToggleData(m_EnableShadowMatte); }
-            set
-            {
-                if (m_EnableShadowMatte == value.isOn)
-                    return;
-                m_EnableShadowMatte = value.isOn;
-                UpdateNodeAfterDeserialization();
-                Dirty(ModificationScope.Graph);
-            }
-        }
 
         public HDUnlitMasterNode()
         {
             UpdateNodeAfterDeserialization();
         }
 
-        public override string documentationURL => Documentation.GetPageLink("Master-Node-Unlit");
+        public override string documentationURL
+        {
+            get { return null; }
+        }
 
         public bool HasDistortion()
         {
@@ -347,25 +333,80 @@ namespace UnityEditor.Rendering.HighDefinition
 
             if (HasDistortion())
             {
-                AddSlot(new Vector2MaterialSlot(DistortionSlotId, DistortionSlotDisplayName, DistortionSlotName, SlotType.Input, new Vector2(0.0f, 0.0f), ShaderStageCapability.Fragment));
+                AddSlot(new Vector2MaterialSlot(DistortionSlotId, DistortionSlotName, DistortionSlotName, SlotType.Input, new Vector2(0.0f, 0.0f), ShaderStageCapability.Fragment));
                 validSlots.Add(DistortionSlotId);
 
                 AddSlot(new Vector1MaterialSlot(DistortionBlurSlotId, DistortionBlurSlotName, DistortionBlurSlotName, SlotType.Input, 1.0f, ShaderStageCapability.Fragment));
                 validSlots.Add(DistortionBlurSlotId);
             }
 
-            if (enableShadowMatte.isOn)
-            {
-                AddSlot(new ColorRGBAMaterialSlot(ShadowTintSlotId, ShadowTintSlotName, ShadowTintSlotName, SlotType.Input, Color.black, ShaderStageCapability.Fragment));
-                validSlots.Add(ShadowTintSlotId);
-            }
-
             RemoveSlotsNameNotMatching(validSlots, true);
         }
 
-        protected override VisualElement CreateCommonSettingsElement()
+        public VisualElement CreateSettingsElement()
         {
             return new HDUnlitSettingsView(this);
+        }
+
+        public string renderQueueTag
+        {
+            get
+            {
+                int queue = HDRenderQueue.ChangeType(renderingPass, sortPriority, alphaTest.isOn);
+                return HDRenderQueue.GetShaderTagValue(queue);
+            }
+        }
+
+        public string renderTypeTag
+        {
+            get
+            {
+                if(surfaceType == SurfaceType.Transparent)
+                    return $"{HDRenderQueue.RenderQueueType.Transparent}";
+                else
+                    return $"{HDRenderQueue.RenderQueueType.Opaque}";
+            }
+        }
+
+        public ConditionalField[] GetConditionalFields(PassDescriptor pass)
+        {
+            return new ConditionalField[]
+            {
+                // Features
+                new ConditionalField(Fields.GraphVertex,                    IsSlotConnected(PositionSlotId) || 
+                                                                                IsSlotConnected(VertexNormalSlotId) || 
+                                                                                IsSlotConnected(VertexTangentSlotId)),
+                new ConditionalField(Fields.GraphPixel,                     true),
+
+                // Distortion
+                new ConditionalField(HDFields.DistortionDepthTest,          distortionDepthTest.isOn),
+                new ConditionalField(HDFields.DistortionAdd,                distortionMode == DistortionMode.Add),
+                new ConditionalField(HDFields.DistortionMultiply,           distortionMode == DistortionMode.Multiply),
+                new ConditionalField(HDFields.DistortionReplace,            distortionMode == DistortionMode.Replace),
+                new ConditionalField(HDFields.TransparentDistortion,        surfaceType != SurfaceType.Opaque && distortion.isOn),
+                
+                // Misc
+                new ConditionalField(Fields.AlphaTest,                      alphaTest.isOn && pass.pixelPorts.Contains(AlphaThresholdSlotId)),
+                new ConditionalField(HDFields.AlphaFog,                     surfaceType != SurfaceType.Opaque && transparencyFog.isOn),
+                new ConditionalField(Fields.VelocityPrecomputed,            addPrecomputedVelocity.isOn),
+            };
+        }
+
+        public void ProcessPreviewMaterial(Material material)
+        {
+            // Fixup the material settings:
+            material.SetFloat(kSurfaceType, (int)(SurfaceType)surfaceType);
+            material.SetFloat(kDoubleSidedEnable, doubleSided.isOn ? 1.0f : 0.0f);
+            material.SetFloat(kAlphaCutoffEnabled, alphaTest.isOn ? 1 : 0);
+            material.SetFloat(kBlendMode, (int)HDSubShaderUtilities.ConvertAlphaModeToBlendMode(alphaMode));
+            material.SetFloat(kEnableFogOnTransparent, transparencyFog.isOn ? 1.0f : 0.0f);
+            material.SetFloat(kZTestTransparent, (int)zTest);
+            material.SetFloat(kTransparentCullMode, (int)transparentCullMode);
+            material.SetFloat(kZWrite, zWrite.isOn ? 1.0f : 0.0f);
+            // No sorting priority for shader graph preview
+            material.renderQueue = (int)HDRenderQueue.ChangeType(renderingPass, offset: 0, alphaTest: alphaTest.isOn);
+
+            HDUnlitGUI.SetupMaterialKeywordsAndPass(material);
         }
 
         public NeededCoordinateSpace RequiresPosition(ShaderStageCapability stageCapability)
@@ -381,9 +422,7 @@ namespace UnityEditor.Rendering.HighDefinition
 
                 validSlots.Add(slots[i]);
             }
-            var slotRequirements = validSlots.OfType<IMayRequirePosition>().Aggregate(NeededCoordinateSpace.None, (mask, node) => mask | node.RequiresPosition(stageCapability));
-
-            return slotRequirements | (transparencyFog.isOn ? NeededCoordinateSpace.World : 0);
+            return validSlots.OfType<IMayRequirePosition>().Aggregate(NeededCoordinateSpace.None, (mask, node) => mask | node.RequiresPosition(stageCapability));
         }
 
          public NeededCoordinateSpace RequiresNormal(ShaderStageCapability stageCapability)
@@ -416,23 +455,6 @@ namespace UnityEditor.Rendering.HighDefinition
                 validSlots.Add(slots[i]);
             }
             return validSlots.OfType<IMayRequireTangent>().Aggregate(NeededCoordinateSpace.None, (mask, node) => mask | node.RequiresTangent(stageCapability));
-        }
-
-        public override void ProcessPreviewMaterial(Material previewMaterial)
-        {
-            // Fixup the material settings:
-            previewMaterial.SetFloat(kSurfaceType, (int)(SurfaceType)surfaceType);
-            previewMaterial.SetFloat(kDoubleSidedEnable, doubleSided.isOn ? 1.0f : 0.0f);
-            previewMaterial.SetFloat(kAlphaCutoffEnabled, alphaTest.isOn ? 1 : 0);
-            previewMaterial.SetFloat(kBlendMode, (int)HDSubShaderUtilities.ConvertAlphaModeToBlendMode(alphaMode));
-            previewMaterial.SetFloat(kEnableFogOnTransparent, transparencyFog.isOn ? 1.0f : 0.0f);
-            previewMaterial.SetFloat(kZTestTransparent, (int)zTest);
-            previewMaterial.SetFloat(kTransparentCullMode, (int)transparentCullMode);
-            previewMaterial.SetFloat(kZWrite, zWrite.isOn ? 1.0f : 0.0f);
-            // No sorting priority for shader graph preview
-            previewMaterial.renderQueue = (int)HDRenderQueue.ChangeType(renderingPass, offset: 0, alphaTest: alphaTest.isOn);
-
-            HDUnlitGUI.SetupMaterialKeywordsAndPass(previewMaterial);
         }
 
         public override void CollectShaderProperties(PropertyCollector collector, GenerationMode generationMode)
@@ -468,18 +490,6 @@ namespace UnityEditor.Rendering.HighDefinition
                 });
             }
 
-            if (enableShadowMatte.isOn)
-            {
-                uint mantissa = ((uint)LightFeatureFlags.Punctual | (uint)LightFeatureFlags.Directional | (uint)LightFeatureFlags.Area) & 0x007FFFFFu;
-                uint exponent = 0b10000000u; // 0 as exponent
-                collector.AddShaderProperty(new Vector1ShaderProperty
-                {
-                    hidden = true,
-                    value = HDShadowUtils.Asfloat((exponent << 23) | mantissa),
-                    overrideReferenceName = HDMaterialProperties.kShadowMatteFilter
-                });
-            }
-
             // Add all shader properties required by the inspector
             HDSubShaderUtilities.AddStencilShaderProperties(collector, false, false);
             HDSubShaderUtilities.AddBlendingStatesShaderProperties(
@@ -490,8 +500,7 @@ namespace UnityEditor.Rendering.HighDefinition
                 zWrite.isOn,
                 transparentCullMode,
                 zTest,
-                false,
-                transparencyFog.isOn
+                false
             );
             HDSubShaderUtilities.AddAlphaCutoffShaderProperties(collector, alphaTest.isOn, false);
             HDSubShaderUtilities.AddDoubleSidedProperty(collector, doubleSided.isOn ? DoubleSidedMode.Enabled : DoubleSidedMode.Disabled);

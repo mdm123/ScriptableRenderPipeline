@@ -77,9 +77,6 @@ namespace UnityEditor.VFX
         [VFXSetting(VFXSettingAttribute.VisibleFlags.InInspector), SerializeField, Tooltip("When enabled, the normals of the particle are inverted when seen from behind, allowing quads with culling set to off to receive correct lighting information.")]
         protected bool doubleSided = false;
 
-        [VFXSetting(VFXSettingAttribute.VisibleFlags.InInspector), SerializeField, Tooltip("When enabled, specular lighting will be rendered regardless of opacity.")]
-        protected bool preserveSpecularLighting = false;
-
         [VFXSetting(VFXSettingAttribute.VisibleFlags.InInspector), SerializeField, Header("Simple Lit features"), Tooltip("When enabled, the particle will receive shadows.")]
         protected bool enableShadows = true;
 
@@ -94,7 +91,7 @@ namespace UnityEditor.VFX
 
         protected VFXAbstractParticleHDRPLitOutput(bool strip = false) : base(strip) { }
 
-        protected virtual bool allowTextures { get { return shaderGraph == null; }}
+        protected virtual bool allowTextures { get { return true; }}
 
         public class HDRPLitInputProperties
         {
@@ -160,7 +157,7 @@ namespace UnityEditor.VFX
             public Color emissiveColor = Color.black;
         }
 
-        protected override bool needsExposureWeight { get { return shaderGraph == null && ((colorMode & ColorMode.Emissive) != 0 || useEmissive || useEmissiveMap); } }
+        protected override bool needsExposureWeight { get { return (colorMode & ColorMode.Emissive) != 0 || useEmissive || useEmissiveMap; } }
 
         protected override bool bypassExposure { get { return false; } }
 
@@ -178,30 +175,30 @@ namespace UnityEditor.VFX
 
                 if (shaderGraph == null)
                 {
-                    properties = properties.Concat(PropertiesFromType("HDRPLitInputProperties"));
-                    properties = properties.Concat(PropertiesFromType(kMaterialTypeToName[(int)materialType]));
+                properties = properties.Concat(PropertiesFromType("HDRPLitInputProperties"));
+                properties = properties.Concat(PropertiesFromType(kMaterialTypeToName[(int)materialType]));
 
-                    if (allowTextures)
-                    {
-                        if (useBaseColorMap != BaseColorMapMode.None)
-                            properties = properties.Concat(PropertiesFromType("BaseColorMapProperties"));
-                    }
+                if (allowTextures)
+                {
+                    if (useBaseColorMap != BaseColorMapMode.None)
+                        properties = properties.Concat(PropertiesFromType("BaseColorMapProperties"));
+                }
 
-                    if ((colorMode & ColorMode.BaseColor) == 0) // particle color is not used as base color so add a slot
-                        properties = properties.Concat(PropertiesFromType("BaseColorProperties"));
+                if ((colorMode & ColorMode.BaseColor) == 0) // particle color is not used as base color so add a slot
+                    properties = properties.Concat(PropertiesFromType("BaseColorProperties"));
 
-                    if (allowTextures)
-                    {
-                        if (useMaskMap)
-                            properties = properties.Concat(PropertiesFromType("MaskMapProperties"));
-                        if (useNormalMap)
-                            properties = properties.Concat(PropertiesFromType("NormalMapProperties"));
-                        if (useEmissiveMap)
-                            properties = properties.Concat(PropertiesFromType("EmissiveMapProperties"));
-                    }
+                if (allowTextures)
+                {
+                    if (useMaskMap)
+                        properties = properties.Concat(PropertiesFromType("MaskMapProperties"));
+                    if (useNormalMap)
+                        properties = properties.Concat(PropertiesFromType("NormalMapProperties"));
+                    if (useEmissiveMap)
+                        properties = properties.Concat(PropertiesFromType("EmissiveMapProperties"));
+                }
 
-                    if (((colorMode & ColorMode.Emissive) == 0) && useEmissive)
-                        properties = properties.Concat(PropertiesFromType("EmissiveColorProperties"));
+                if (((colorMode & ColorMode.Emissive) == 0) && useEmissive)
+                    properties = properties.Concat(PropertiesFromType("EmissiveColorProperties"));
                 }
 
                 return properties;
@@ -215,55 +212,55 @@ namespace UnityEditor.VFX
 
             if( shaderGraph == null)
             {
-                yield return slotExpressions.First(o => o.name == "smoothness");
+            yield return slotExpressions.First(o => o.name == "smoothness");
 
-                switch (materialType)
+            switch (materialType)
+            {
+                case MaterialType.Standard:
+                case MaterialType.SimpleLit:
+                    yield return slotExpressions.First(o => o.name == "metallic");
+                    break;
+
+                case MaterialType.SpecularColor:
+                    yield return slotExpressions.First(o => o.name == "specularColor");
+                    break;
+
+                case MaterialType.Translucent:
+                case MaterialType.SimpleLitTranslucent:
                 {
-                    case MaterialType.Standard:
-                    case MaterialType.SimpleLit:
-                        yield return slotExpressions.First(o => o.name == "metallic");
-                        break;
-
-                    case MaterialType.SpecularColor:
-                        yield return slotExpressions.First(o => o.name == "specularColor");
-                        break;
-
-                    case MaterialType.Translucent:
-                    case MaterialType.SimpleLitTranslucent:
-                        {
-                            yield return slotExpressions.First(o => o.name == "thickness");
-                            uint diffusionProfileHash = (diffusionProfileAsset?.profile != null) ? diffusionProfileAsset.profile.hash : 0;
-                            yield return new VFXNamedExpression(VFXValue.Constant(diffusionProfileHash), "diffusionProfileHash");
-                            break;
-                        }
-
-                    default: break;
+                    yield return slotExpressions.First(o => o.name == "thickness");
+                    uint diffusionProfileHash = (diffusionProfileAsset?.profile != null) ? diffusionProfileAsset.profile.hash : 0;
+                    yield return new VFXNamedExpression(VFXValue.Constant(diffusionProfileHash), "diffusionProfileHash");
+                    break;
                 }
 
-                if (allowTextures)
-                {
-                    if (useBaseColorMap != BaseColorMapMode.None)
-                        yield return slotExpressions.First(o => o.name == "baseColorMap");
-                    if (useMaskMap)
-                        yield return slotExpressions.First(o => o.name == "maskMap");
-                    if (useNormalMap)
-                    {
-                        yield return slotExpressions.First(o => o.name == "normalMap");
-                        yield return slotExpressions.First(o => o.name == "normalScale");
-                    }
-                    if (useEmissiveMap)
-                    {
-                        yield return slotExpressions.First(o => o.name == "emissiveMap");
-                        yield return slotExpressions.First(o => o.name == "emissiveScale");
-                    }
-                }
-
-                if ((colorMode & ColorMode.BaseColor) == 0)
-                    yield return slotExpressions.First(o => o.name == "baseColor");
-
-                if (((colorMode & ColorMode.Emissive) == 0) && useEmissive)
-                    yield return slotExpressions.First(o => o.name == "emissiveColor");
+                default: break;
             }
+
+            if (allowTextures)
+            {
+                if (useBaseColorMap != BaseColorMapMode.None)
+                    yield return slotExpressions.First(o => o.name == "baseColorMap");
+                if (useMaskMap)
+                    yield return slotExpressions.First(o => o.name == "maskMap");
+                if (useNormalMap)
+                {
+                    yield return slotExpressions.First(o => o.name == "normalMap");
+                    yield return slotExpressions.First(o => o.name == "normalScale");
+                }
+                if (useEmissiveMap)
+                {
+                    yield return slotExpressions.First(o => o.name == "emissiveMap");
+                    yield return slotExpressions.First(o => o.name == "emissiveScale");
+                }
+            }
+
+            if ((colorMode & ColorMode.BaseColor) == 0)
+                yield return slotExpressions.First(o => o.name == "baseColor");
+
+            if (((colorMode & ColorMode.Emissive) == 0) && useEmissive)
+                yield return slotExpressions.First(o => o.name == "emissiveColor");
+        }
         }
 
         public override IEnumerable<string> additionalDefines
@@ -275,51 +272,50 @@ namespace UnityEditor.VFX
 
                 yield return "HDRP_LIT";
 
-                if (shaderGraph == null)
-                    switch (materialType)
-                    {
-                        case MaterialType.Standard:
-                            yield return "HDRP_MATERIAL_TYPE_STANDARD";
-                            break;
+                switch (materialType)
+                {
+                    case MaterialType.Standard:
+                        yield return "HDRP_MATERIAL_TYPE_STANDARD";
+                        break;
 
-                        case MaterialType.SpecularColor:
-                            yield return "HDRP_MATERIAL_TYPE_SPECULAR";
-                            break;
+                    case MaterialType.SpecularColor:
+                        yield return "HDRP_MATERIAL_TYPE_SPECULAR";
+                        break;
 
-                        case MaterialType.Translucent:
-                            yield return "HDRP_MATERIAL_TYPE_TRANSLUCENT";
-                            if (multiplyThicknessWithAlpha)
-                                yield return "HDRP_MULTIPLY_THICKNESS_WITH_ALPHA";
-                            break;
+                    case MaterialType.Translucent:
+                        yield return "HDRP_MATERIAL_TYPE_TRANSLUCENT";
+                        if (multiplyThicknessWithAlpha)
+                            yield return "HDRP_MULTIPLY_THICKNESS_WITH_ALPHA";
+                        break;
 
-                        case MaterialType.SimpleLit:
-                            yield return "HDRP_MATERIAL_TYPE_SIMPLELIT";
-                            if (enableShadows)
-                                yield return "HDRP_ENABLE_SHADOWS";
-                            if (enableSpecular)
-                                yield return "HDRP_ENABLE_SPECULAR";
-                            if (enableCookie)
-                                yield return "HDRP_ENABLE_COOKIE";
-                            if (enableEnvLight)
-                                yield return "HDRP_ENABLE_ENV_LIGHT";
-                            break;
+                    case MaterialType.SimpleLit:
+                        yield return "HDRP_MATERIAL_TYPE_SIMPLELIT";
+                        if (enableShadows)
+                            yield return "HDRP_ENABLE_SHADOWS";
+                        if (enableSpecular)
+                            yield return "HDRP_ENABLE_SPECULAR";
+                        if (enableCookie)
+                            yield return "HDRP_ENABLE_COOKIE";
+                        if (enableEnvLight)
+                            yield return "HDRP_ENABLE_ENV_LIGHT";
+                        break;
 
-                        case MaterialType.SimpleLitTranslucent:
-                            yield return "HDRP_MATERIAL_TYPE_SIMPLELIT_TRANSLUCENT";
-                            if (enableShadows)
-                                yield return "HDRP_ENABLE_SHADOWS";
-                            if (enableSpecular)
-                                yield return "HDRP_ENABLE_SPECULAR";
-                            if (enableCookie)
-                                yield return "HDRP_ENABLE_COOKIE";
-                            if (enableEnvLight)
-                                yield return "HDRP_ENABLE_ENV_LIGHT";
-                            if (multiplyThicknessWithAlpha)
-                                yield return "HDRP_MULTIPLY_THICKNESS_WITH_ALPHA";
-                            break;
+                    case MaterialType.SimpleLitTranslucent:
+                        yield return "HDRP_MATERIAL_TYPE_SIMPLELIT_TRANSLUCENT";
+                        if (enableShadows)
+                            yield return "HDRP_ENABLE_SHADOWS";
+                        if (enableSpecular)
+                            yield return "HDRP_ENABLE_SPECULAR";
+                        if (enableCookie)
+                            yield return "HDRP_ENABLE_COOKIE";
+                        if (enableEnvLight)
+                            yield return "HDRP_ENABLE_ENV_LIGHT";
+                        if (multiplyThicknessWithAlpha)
+                            yield return "HDRP_MULTIPLY_THICKNESS_WITH_ALPHA";
+                        break;
 
-                        default: break;
-                    }
+                    default: break;
+                }
 
                 if (allowTextures)
                 {
@@ -337,18 +333,15 @@ namespace UnityEditor.VFX
                         yield return "HDRP_USE_EMISSIVE_MAP";
                 }
 
-                if (shaderGraph == null)
-                {
-                    if ((colorMode & ColorMode.BaseColor) != 0)
-                        yield return "HDRP_USE_BASE_COLOR";
-                    else
-                        yield return "HDRP_USE_ADDITIONAL_BASE_COLOR";
+                if ((colorMode & ColorMode.BaseColor) != 0)
+                    yield return "HDRP_USE_BASE_COLOR";
+                else
+                    yield return "HDRP_USE_ADDITIONAL_BASE_COLOR";
 
-                    if ((colorMode & ColorMode.Emissive) != 0)
-                        yield return "HDRP_USE_EMISSIVE_COLOR";
-                    else if (useEmissive)
-                        yield return "HDRP_USE_ADDITIONAL_EMISSIVE_COLOR";
-                }
+                if ((colorMode & ColorMode.Emissive) != 0)
+                    yield return "HDRP_USE_EMISSIVE_COLOR";
+                else if (useEmissive)
+                    yield return "HDRP_USE_ADDITIONAL_EMISSIVE_COLOR";
 
                 if (doubleSided)
                     yield return "USE_DOUBLE_SIDED";
@@ -356,7 +349,7 @@ namespace UnityEditor.VFX
                 if (onlyAmbientLighting && !isBlendModeOpaque)
                     yield return "USE_ONLY_AMBIENT_LIGHTING";
 
-                if (isBlendModeOpaque && (shaderGraph != null || (materialType != MaterialType.SimpleLit && materialType != MaterialType.SimpleLitTranslucent)))
+                if (isBlendModeOpaque && materialType != MaterialType.SimpleLit && materialType != MaterialType.SimpleLitTranslucent)
                     yield return "IS_OPAQUE_NOT_SIMPLE_LIT_PARTICLE";
             }
         }
@@ -394,20 +387,11 @@ namespace UnityEditor.VFX
                     yield return "alphaMask";
                 }
 
-                if (shaderGraph != null)
-                {
-                    yield return "materialType";
-                    yield return "useEmissive";
-                    yield return "colorMode";
-                }
-                else if ((colorMode & ColorMode.Emissive) != 0)
+                if ((colorMode & ColorMode.Emissive) != 0)
                     yield return "useEmissive";
 
                 if (isBlendModeOpaque)
-                {
                     yield return "onlyAmbientLighting";
-                    yield return "preserveSpecularLighting";
-                }
             }
         }
 
@@ -441,14 +425,11 @@ namespace UnityEditor.VFX
                         break;
                 }
                 if (!isBlendModeOpaque)
-                {
-                    if (preserveSpecularLighting)
-                        forwardDefines.WriteLine("#define _BLENDMODE_PRESERVE_SPECULAR_LIGHTING");
-                }
+                    forwardDefines.WriteLine("#define _SURFACE_TYPE_TRANSPARENT");
 
                 yield return new KeyValuePair<string, VFXShaderWriter>("${VFXHDRPForwardDefines}", forwardDefines);
                 var forwardPassName = new VFXShaderWriter();
-                forwardPassName.Write(shaderGraph == null && (materialType == MaterialType.SimpleLit || materialType == MaterialType.SimpleLitTranslucent) ? "ForwardOnly" : "Forward");
+                forwardPassName.Write(materialType == MaterialType.SimpleLit || materialType == MaterialType.SimpleLitTranslucent ? "ForwardOnly" : "Forward");
                 yield return new KeyValuePair<string, VFXShaderWriter>("${VFXHDRPForwardPassName}", forwardPassName);
             }
         }

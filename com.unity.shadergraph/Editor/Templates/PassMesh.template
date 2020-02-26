@@ -7,22 +7,15 @@ Pass
     }
    
     // Render State
-    $splice(Blending)
-    $splice(Culling)
-    $splice(ZTest)
-    $splice(ZWrite)
-    $splice(ColorMask)
-    $splice(Stencil)
-
-    HLSLPROGRAM
-    #pragma vertex vert
-    #pragma fragment frag
+    $splice(RenderState)
 
     // Debug
     $splice(Debug)
 
     // --------------------------------------------------
     // Pass
+
+    HLSLPROGRAM
 
     // Pragmas
     $splice(PassPragmas)
@@ -38,9 +31,6 @@ Pass
     $SpecularSetup:                     #define _SPECULAR_SETUP
     $BlendMode.Add:                     #define _BLENDMODE_ADD 1
     $BlendMode.Premultiply:             #define _ALPHAPREMULTIPLY_ON 1
-    $features.NormalDropOffTS:			#define _NORMAL_DROPOFF_TS 1
-    $features.NormalDropOffOS:			#define _NORMAL_DROPOFF_OS 1
-    $features.NormalDropOffWS:			#define _NORMAL_DROPOFF_WS 1
     $Attributes.normalOS:               #define ATTRIBUTES_NEED_NORMAL
     $Attributes.tangentOS:              #define ATTRIBUTES_NEED_TANGENT
     $Attributes.uv0:                    #define ATTRIBUTES_NEED_TEXCOORD0
@@ -62,18 +52,24 @@ Pass
     $Varyings.fogFactorAndVertexLight:  #define VARYINGS_NEED_FOG_AND_VERTEX_LIGHT
     $Varyings.cullFace:                 #define VARYINGS_NEED_CULLFACE
     $features.graphVertex:              #define FEATURES_GRAPH_VERTEX
-    $splice(PassInstancing)
     $splice(GraphDefines)
-    $splice(DotsInstancingVars)
 
     // Includes
-    $splice(PassIncludes)
+    $splice(PreGraphIncludes)
+
+    // --------------------------------------------------
+    // Structs and Packing
+
+    $splice(PassStructs)
+
+    $splice(InterpolatorPack)
 
     // --------------------------------------------------
     // Graph
 
     // Graph Properties
     $splice(GraphProperties)
+    $splice(DotsInstancedProperties)
 
     // Graph Functions
     $splice(GraphFunctions)
@@ -85,13 +81,6 @@ Pass
     $splice(GraphPixel)
 
     // --------------------------------------------------
-    // Structs and Packing
-
-    $buildType(Attributes)
-
-    $buildType(Varyings)
-
-    // --------------------------------------------------
     // Build Graph Inputs
 
     $features.graphVertex:  $include("BuildVertexDescriptionInputs.template.hlsl")
@@ -100,7 +89,7 @@ Pass
     // --------------------------------------------------
     // Main
 
-    $splice(MainInclude)
+    $splice(PostGraphIncludes)
 
     ENDHLSL
 }

@@ -38,8 +38,15 @@ namespace UnityEditor.Experimental.Rendering.HighDefinition
             }
 
             // If ray tracing is supported display the content of the volume component
-            if (HDRenderPipeline.pipelineSupportsRayTracing)
+            if (((RenderPipelineManager.currentPipeline as HDRenderPipeline).rayTracingSupported))
             {
+                if (currentAsset.currentPlatformRenderPipelineSettings.supportedRaytracingTier != RenderPipelineSettings.RaytracingTier.Tier2)
+                {
+                    EditorGUILayout.Space();
+                    EditorGUILayout.HelpBox("The current HDRP Asset does not support Path Tracing.", MessageType.Error, wide: true);
+                    return;
+                }
+
                 PropertyField(m_Enable);
 
                 if (m_Enable.overrideState.boolValue && m_Enable.value.boolValue)

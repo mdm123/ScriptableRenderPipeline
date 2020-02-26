@@ -1,4 +1,4 @@
-#if defined(SHADERPASS_SHADOWCASTER)
+﻿#if (SHADERPASS == SHADERPASS_SHADOWCASTER)
     float3 _LightDirection;
 #endif
 
@@ -8,7 +8,6 @@ Varyings BuildVaryings(Attributes input)
 
     UNITY_SETUP_INSTANCE_ID(input);
     UNITY_TRANSFER_INSTANCE_ID(input, output);
-    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
 #if defined(FEATURES_GRAPH_VERTEX)
     // Evaluate Vertex Graph
@@ -53,14 +52,14 @@ Varyings BuildVaryings(Attributes input)
 #endif
     
 #ifdef VARYINGS_NEED_NORMAL_WS
-    output.normalWS = normalWS;			// normalized in TransformObjectToWorldNormal()
+    output.normalWS = NormalizeNormalPerVertex(normalWS);
 #endif
 
 #ifdef VARYINGS_NEED_TANGENT_WS
-    output.tangentWS = tangentWS;		// normalized in TransformObjectToWorldDir()
+    output.tangentWS = normalize(tangentWS);
 #endif
 
-#if defined(SHADERPASS_SHADOWCASTER)
+#if (SHADERPASS == SHADERPASS_SHADOWCASTER)
     // Define shadow pass specific clip position for Universal
     output.positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, _LightDirection));
     #if UNITY_REVERSED_Z
@@ -68,7 +67,7 @@ Varyings BuildVaryings(Attributes input)
     #else
         output.positionCS.z = max(output.positionCS.z, output.positionCS.w * UNITY_NEAR_CLIP_VALUE);
     #endif
-#elif defined(SHADERPASS_META)
+#elif (SHADERPASS == SHADERPASS_META)
     output.positionCS = MetaVertexPosition(float4(input.positionOS, 0), input.uv1, input.uv2, unity_LightmapST, unity_DynamicLightmapST);
 #else
     output.positionCS = TransformWorldToHClip(positionWS);
@@ -95,11 +94,15 @@ Varyings BuildVaryings(Attributes input)
     output.viewDirectionWS = _WorldSpaceCameraPos.xyz - positionWS;
 #endif
 
+#ifdef VARYINGS_NEED_BITANGENT_WS
+    output.bitangentWS = cross(normalWS, tangentWS.xyz) * tangentWS.w;
+#endif
+
 #ifdef VARYINGS_NEED_SCREENPOSITION
     output.screenPosition = ComputeScreenPos(output.positionCS, _ProjectionParams.x);
 #endif
 
-#if defined(SHADERPASS_FORWARD)
+#if (SHADERPASS == SHADERPASS_FORWARD)
     OUTPUT_LIGHTMAP_UV(input.uv1, unity_LightmapST, output.lightmapUV);
     OUTPUT_SH(normalWS, output.sh);
 #endif

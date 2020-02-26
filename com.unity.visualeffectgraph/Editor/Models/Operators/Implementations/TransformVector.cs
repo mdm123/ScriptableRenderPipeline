@@ -18,19 +18,10 @@ namespace UnityEditor.VFX.Operator
         public class OutputProperties
         {
             [Tooltip("Outputs the transformed vector.")]
-            public Vector tVec;
+            public Vector3 tVec = Vector3.zero;
         }
 
         override public string name { get { return "Transform (Vector)"; } }
-
-        public override void Sanitize(int version)
-        {
-            if (version < 4)
-            {
-                SanitizeHelper.MigrateVector3OutputToSpaceableKeepingLegacyBehavior(this, "Vector");
-            }
-            base.Sanitize(version);
-        }
 
         protected override sealed VFXExpression[] BuildExpression(VFXExpression[] inputExpression)
         {

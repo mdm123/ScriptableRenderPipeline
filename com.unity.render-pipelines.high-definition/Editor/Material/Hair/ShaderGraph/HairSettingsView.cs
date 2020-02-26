@@ -110,7 +110,7 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                     });
                 });
 
-                ps.Add(new PropertyRow(CreateLabel("Depth Write", indentLevel)), (row) =>
+                ps.Add(new PropertyRow(CreateLabel("ZWrite", indentLevel)), (row) =>
                 {
                     row.Add(new Toggle(), (toggle) =>
                     {
@@ -131,7 +131,7 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                     });
                 }
 
-                ps.Add(new PropertyRow(CreateLabel("Depth Test", indentLevel)), (row) =>
+                ps.Add(new PropertyRow(CreateLabel("Z Test", indentLevel)), (row) =>
                 {
                     row.Add(new EnumField(m_Node.zTest), (e) =>
                     {
@@ -244,15 +244,6 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                 {
                     toggle.value = m_Node.useLightFacingNormal.isOn;
                     toggle.OnToggleChanged(ChangeUseLightFacingNormal);
-                });
-            });
-
-            ps.Add(new PropertyRow(CreateLabel("DOTS instancing", indentLevel)), (row) =>
-            {
-                row.Add(new Toggle(), (toggle) =>
-                {
-                    toggle.value = m_Node.dotsInstancing.isOn;
-                    toggle.OnToggleChanged(ChangeDotsInstancing);
                 });
             });
 
@@ -462,14 +453,6 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
 
             m_Node.owner.owner.RegisterCompleteObjectUndo("ZTest Change");
             m_Node.zTest = (CompareFunction)evt.newValue;
-        }
-
-        void ChangeDotsInstancing(ChangeEvent<bool> evt)
-        {
-            m_Node.owner.owner.RegisterCompleteObjectUndo("DotsInstancing Change");
-            ToggleData td = m_Node.dotsInstancing;
-            td.isOn = evt.newValue;
-            m_Node.dotsInstancing = td;
         }
 
         void ChangeSupportLODCrossFade(ChangeEvent<bool> evt)

@@ -18,14 +18,44 @@ namespace UnityEditor.Rendering.HighDefinition
 
         readonly static ExpandedState<Expandable, DensityVolume> k_ExpandedState = new ExpandedState<Expandable, DensityVolume>(Expandable.Volume | Expandable.DensityMaskTexture, "HDRP");
 
+        static bool GetAdvanced(Expandable mask, SerializedDensityVolume serialized, Editor owner)
+        {
+            //only one possibility for now, change to bit mask if several later (see HDLightUI)
+            if (mask == Expandable.Volume)
+                return serialized.editorAdvancedFade.boolValue;
+            return false;
+        }
+
+        static void SetAdvanced(Expandable mask, bool value, SerializedDensityVolume serialized, Editor owner)
+        {
+            //only one possibility for now, change to bit mask if several later (see HDLightUI)
+            if (mask != Expandable.Volume)
+                return;
+            DensityVolumeEditor.s_BlendBox.monoHandle = !value;
+            serialized.editorAdvancedFade.boolValue = value;
+        }
+
+        static void SwitchAdvanced(Expandable mask, SerializedDensityVolume serialized, Editor owner)
+        {
+            //only one possibility for now, change to bit mask if several later (see HDLightUI)
+            if (mask != Expandable.Volume)
+                return;
+            bool advancedSwitched = !serialized.editorAdvancedFade.boolValue;
+            DensityVolumeEditor.s_BlendBox.monoHandle = advancedSwitched;
+            serialized.editorAdvancedFade.boolValue = advancedSwitched;
+        }
+
         public static readonly CED.IDrawer Inspector = CED.Group(
             CED.Group(
                 Drawer_ToolBar,
                 Drawer_PrimarySettings
                 ),
             CED.space,
-            CED.FoldoutGroup(Styles.k_VolumeHeader, Expandable.Volume, k_ExpandedState,
-                Drawer_VolumeContent 
+            CED.AdvancedFoldoutGroup(Styles.k_VolumeHeader, Expandable.Volume, k_ExpandedState,
+                (serialized, owner) => GetAdvanced(Expandable.Volume, serialized, owner),
+                (serialized, owner) => SwitchAdvanced(Expandable.Volume, serialized, owner),
+                Drawer_VolumeContent, //handle both advanced control and normal control
+                CED.noop
                 ),
             CED.FoldoutGroup(
                 Styles.k_DensityMaskTextureHeader, Expandable.DensityMaskTexture, k_ExpandedState,
@@ -114,9 +144,6 @@ namespace UnityEditor.Rendering.HighDefinition
                 serialized.editorUniformFade.floatValue = Mathf.Clamp(serialized.editorUniformFade.floatValue, 0f, max);
             }
 
-            EditorGUILayout.Space();
-            EditorGUILayout.PropertyField(serialized.editorAdvancedFade, Styles.s_ManipulatonTypeContent);
-
             Vector3 serializedSize = serialized.size.vector3Value;
             EditorGUI.BeginChangeCheck();
             if (serialized.editorAdvancedFade.hasMultipleDifferentValues)
@@ -126,7 +153,30 @@ namespace UnityEditor.Rendering.HighDefinition
             }
             else if (serialized.editorAdvancedFade.boolValue)
             {
-                CoreEditorUtils.DrawVector6(Styles.s_BlendLabel, serialized.editorPositiveFade, serialized.editorNegativeFade, Vector3.zero, serializedSize, InfluenceVolumeUI.k_HandlesColor, serialized.size, false);
+                EditorGUI.BeginChangeCheck();
+                CoreEditorUtils.DrawVector6(Styles.s_BlendLabel, serialized.editorPositiveFade, serialized.editorNegativeFade, Vector3.zero, serializedSize, InfluenceVolumeUI.k_HandlesColor, serialized.size);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    //forbid positive/negative box that doesn't intersect in inspector too
+                    Vector3 positive = serialized.editorPositiveFade.vector3Value;
+                    Vector3 negative = serialized.editorNegativeFade.vector3Value;
+                    for (int axis = 0; axis < 3; ++axis)
+                    {
+                        if (positive[axis] > 1f - negative[axis])
+                        {
+                            if (positive == serialized.editorPositiveFade.vector3Value)
+                            {
+                                negative[axis] = 1f - positive[axis];
+                            }
+                            else
+                            {
+                                positive[axis] = 1f - negative[axis];
+                            }
+                        }
+                    }
+                    serialized.editorPositiveFade.vector3Value = positive;
+                    serialized.editorNegativeFade.vector3Value = negative;
+                }
             }
             else
             {
@@ -154,20 +204,19 @@ namespace UnityEditor.Rendering.HighDefinition
                 serialized.editorNegativeFade.vector3Value = negFade;
             }
 
-            EditorGUILayout.Space();
             EditorGUILayout.PropertyField(serialized.invertFade, Styles.s_InvertFadeLabel);
 
             // Distance fade.
             {
                 EditorGUI.BeginChangeCheck();
 
-                EditorGUILayout.PropertyField(serialized.distanceFadeStart, Styles.s_DistanceFadeStartLabel);
-                EditorGUILayout.PropertyField(serialized.distanceFadeEnd, Styles.s_DistanceFadeEndLabel);
+                float distanceFadeStart = EditorGUILayout.FloatField(Styles.s_DistanceFadeStartLabel, serialized.distanceFadeStart.floatValue);
+                float distanceFadeEnd   = EditorGUILayout.FloatField(Styles.s_DistanceFadeEndLabel,   serialized.distanceFadeEnd.floatValue);
 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    float distanceFadeStart = Mathf.Max(0, serialized.distanceFadeStart.floatValue);
-                    float distanceFadeEnd   = Mathf.Max(distanceFadeStart, serialized.distanceFadeEnd.floatValue);
+                    distanceFadeStart = Mathf.Max(0, distanceFadeStart);
+                    distanceFadeEnd   = Mathf.Max(distanceFadeStart, distanceFadeEnd);
 
                     serialized.distanceFadeStart.floatValue = distanceFadeStart;
                     serialized.distanceFadeEnd.floatValue   = distanceFadeEnd;

@@ -12,21 +12,6 @@ using System.IO;
 
 namespace UnityEditor.Rendering.HighDefinition
 {
-    enum InclusiveScope
-    {
-        HDRPAsset = 1 << 0,
-        HDRP = HDRPAsset | 1 << 1, //HDRPAsset is inside HDRP and will be indented
-        XRManagement = 1 << 2,
-        VR = XRManagement | 1 << 3, //XRManagement is inside VR and will be indented
-        DXR = 1 << 4,
-    }
-
-    static class InclusiveScopeExtention
-    {
-        public static bool Contains(this InclusiveScope thisScope, InclusiveScope scope)
-            => ((~thisScope) & scope) == 0;
-    }
-
     partial class HDWizard
     {
         #region REFLECTION
@@ -110,108 +95,6 @@ namespace UnityEditor.Rendering.HighDefinition
 
         #endregion
 
-        #region Entry
-
-        struct Entry
-        {
-            public delegate bool Checker();
-            public delegate void Fixer(bool fromAsync);
-
-            public readonly InclusiveScope scope;
-            public readonly Style.ConfigStyle configStyle;
-            public readonly Checker check;
-            public readonly Fixer fix;
-            public readonly int indent;
-            public Entry(InclusiveScope scope, Style.ConfigStyle configStyle, Checker check, Fixer fix)
-            {
-                this.scope = scope;
-                this.configStyle = configStyle;
-                this.check = check;
-                this.fix = fix;
-                indent = scope == InclusiveScope.HDRPAsset || scope == InclusiveScope.XRManagement ? 1 : 0;
-            }
-        }
-
-        //To add elements in the Wizard configuration checker,
-        //add your new checks in this array at the right position.
-        //Both "Fix All" button and UI drawing will use it.
-        //Indentation is computed in Entry if you use certain subscope.
-        Entry[] m_Entries;
-        Entry[] entries
-        {
-            get
-            {
-                // due to functor, cannot static link directly in an array and need lazy init
-                if (m_Entries == null)
-                    m_Entries = new[]
-                    {
-                        new Entry(InclusiveScope.HDRP, Style.hdrpColorSpace, IsColorSpaceCorrect, FixColorSpace),
-                        new Entry(InclusiveScope.HDRP, Style.hdrpLightmapEncoding, IsLightmapCorrect, FixLightmap),
-                        new Entry(InclusiveScope.HDRP, Style.hdrpShadow, IsShadowCorrect, FixShadow),
-                        new Entry(InclusiveScope.HDRP, Style.hdrpShadowmask, IsShadowmaskCorrect, FixShadowmask),
-                        new Entry(InclusiveScope.HDRP, Style.hdrpAsset, IsHdrpAssetCorrect, FixHdrpAsset),
-                        new Entry(InclusiveScope.HDRPAsset, Style.hdrpAssetAssigned, IsHdrpAssetUsedCorrect, FixHdrpAssetUsed),
-                        new Entry(InclusiveScope.HDRPAsset, Style.hdrpAssetRuntimeResources, IsHdrpAssetRuntimeResourcesCorrect, FixHdrpAssetRuntimeResources),
-                        new Entry(InclusiveScope.HDRPAsset, Style.hdrpAssetEditorResources, IsHdrpAssetEditorResourcesCorrect, FixHdrpAssetEditorResources),
-                        new Entry(InclusiveScope.HDRPAsset, Style.hdrpBatcher, IsSRPBatcherCorrect, FixSRPBatcher),
-                        new Entry(InclusiveScope.HDRPAsset, Style.hdrpAssetDiffusionProfile, IsHdrpAssetDiffusionProfileCorrect, FixHdrpAssetDiffusionProfile),
-                        new Entry(InclusiveScope.HDRP, Style.hdrpScene, IsDefaultSceneCorrect, FixDefaultScene),
-                        new Entry(InclusiveScope.HDRP, Style.hdrpVolumeProfile, IsDefaultVolumeProfileAssigned, FixDefaultVolumeProfileAssigned),
-
-                        new Entry(InclusiveScope.VR, Style.vrLegacyVRSystem, IsOldVRSystemForCurrentBuildTargetGroupCorrect, FixOldVRSystemForCurrentBuildTargetGroup),
-                        new Entry(InclusiveScope.VR, Style.vrXRManagementPackage, IsVRXRManagementPackageInstalledCorrect, FixVRXRManagementPackageInstalled),
-                        new Entry(InclusiveScope.XRManagement, Style.vrOculusPlugin, () => false, null),
-                        new Entry(InclusiveScope.XRManagement, Style.vrSinglePassInstancing, () => false, null),
-                        new Entry(InclusiveScope.VR, Style.vrLegacyHelpersPackage, IsVRLegacyHelpersCorrect, FixVRLegacyHelpers),
-
-                        new Entry(InclusiveScope.DXR, Style.dxrAutoGraphicsAPI, IsDXRAutoGraphicsAPICorrect, FixDXRAutoGraphicsAPI),
-                        new Entry(InclusiveScope.DXR, Style.dxrD3D12, IsDXRDirect3D12Correct, FixDXRDirect3D12),
-                        new Entry(InclusiveScope.DXR, Style.dxrStaticBatching, IsDXRStaticBatchingCorrect, FixDXRStaticBatching),
-                        new Entry(InclusiveScope.DXR, Style.dxrScreenSpaceShadow, IsDXRScreenSpaceShadowCorrect, FixDXRScreenSpaceShadow),
-                        new Entry(InclusiveScope.DXR, Style.dxrReflections, IsDXRReflectionsCorrect, FixDXRReflections),
-                        new Entry(InclusiveScope.DXR, Style.dxrActivated, IsDXRActivationCorrect, FixDXRActivation),
-                        new Entry(InclusiveScope.DXR, Style.dxrResources, IsDXRAssetCorrect, FixDXRAsset),
-                        new Entry(InclusiveScope.DXR, Style.dxrShaderConfig, IsDXRShaderConfigCorrect, FixDXRShaderConfig),
-                        new Entry(InclusiveScope.DXR, Style.dxrScene, IsDXRDefaultSceneCorrect, FixDXRDefaultScene),
-                    };
-                return m_Entries;
-            }
-        }
-
-        // Utility that grab all check within the scope or in sub scope included and check if everything is correct
-        bool IsAllEntryCorrectInScope(InclusiveScope scope)
-        {
-            IEnumerable<Entry.Checker> checks = entries.Where(e => scope.Contains(e.scope)).Select(e => e.check);
-            if (checks.Count() == 0)
-                return true;
-
-            IEnumerator<Entry.Checker> enumerator = checks.GetEnumerator();
-            enumerator.MoveNext();
-            bool result = enumerator.Current();
-            if (enumerator.MoveNext())
-                for (; result && enumerator.MoveNext();)
-                    result &= enumerator.Current();
-            return result;
-        }
-
-        // Utility that grab all check and fix within the scope or in sub scope included and performe fix if check return incorrect
-        void FixAllEntryInScope(InclusiveScope scope)
-        {
-            IEnumerable<(Entry.Checker, Entry.Fixer)> pairs = entries.Where(e => scope.Contains(e.scope)).Select(e => (e.check, e.fix));
-            if (pairs.Count() == 0)
-                return;
-
-            foreach ((Entry.Checker check, Entry.Fixer fix) in pairs)
-                if (fix != null)
-                    m_Fixer.Add(() =>
-                    {
-                        if (!check())
-                            fix(fromAsync: true);
-                    });
-        }
-
-        #endregion 
-
         #region Queue
 
         class QueuedLauncher
@@ -221,8 +104,6 @@ namespace UnityEditor.Rendering.HighDefinition
             bool m_StopRequested = false;
 
             public void Stop() => m_StopRequested = true;
-
-            public int remainingFixes => m_Queue.Count;
 
             void Start()
             {
@@ -264,50 +145,48 @@ namespace UnityEditor.Rendering.HighDefinition
         }
         QueuedLauncher m_Fixer = new QueuedLauncher();
 
-        void RestartFixAllAfterDomainReload()
-        {
-            if (m_Fixer.remainingFixes > 0)
-                HDProjectSettings.wizardNeedToRunFixAllAgainAfterDomainReload = true;
-        }
-
-
-        void CheckPersistentFixAll()
-        {
-            if (HDProjectSettings.wizardNeedToRunFixAllAgainAfterDomainReload)
-            {
-                switch ((Configuration)HDProjectSettings.wizardActiveTab)
-                {
-                    case Configuration.HDRP:
-                        FixHDRPAll();
-                        break;
-                    case Configuration.HDRP_VR:
-                        FixVRAll();
-                        break;
-                    case Configuration.HDRP_DXR:
-                        FixDXRAll();
-                        break;
-                }
-                m_Fixer.Add(() => HDProjectSettings.wizardNeedToRunFixAllAgainAfterDomainReload = false);
-            }
-        }
-
         #endregion
 
         #region HDRP_FIXES
 
-        bool IsHDRPAllCorrect()
-            => IsAllEntryCorrectInScope(InclusiveScope.HDRP);
+        bool IsHDRPAllCorrect() =>
+            IsLightmapCorrect()
+            && IsShadowmaskCorrect()
+            && IsColorSpaceCorrect()
+            && IsHdrpAssetCorrect()
+            && IsDefaultSceneCorrect();
         void FixHDRPAll()
-            => FixAllEntryInScope(InclusiveScope.HDRP);
+        {
+            m_Fixer.Add(
+                () => { if (!IsColorSpaceCorrect())     FixColorSpace();                    },
+                () => { if (!IsLightmapCorrect())       FixLightmap();                      },
+                () => { if (!IsShadowmaskCorrect())     FixShadowmask();                    });
+            FixHdrpAsset();
+            m_Fixer.Add(
+                () => { if (!IsDefaultSceneCorrect())               FixDefaultScene(fromAsync: true); },
+                () => { if (!IsDefaultVolumeProfileAssigned())      FixDefaultVolumeProfileAssigned(); }
+            );
+        }
 
-        bool IsHdrpAssetCorrect()
-            => IsAllEntryCorrectInScope(InclusiveScope.HDRPAsset);
-        void FixHdrpAsset(bool fromAsyncUnused)
-            => FixAllEntryInScope(InclusiveScope.HDRPAsset);
+        bool IsHdrpAssetCorrect() =>
+            IsHdrpAssetUsedCorrect()
+            && IsHdrpAssetRuntimeResourcesCorrect()
+            && IsHdrpAssetEditorResourcesCorrect()
+            && IsSRPBatcherCorrect()
+            && IsHdrpAssetDiffusionProfileCorrect();
+        void FixHdrpAsset()
+        {
+            m_Fixer.Add(
+                () => { if (!IsHdrpAssetUsedCorrect())              FixHdrpAssetUsed(fromAsync: true);  },
+                () => { if (!IsHdrpAssetRuntimeResourcesCorrect())  FixHdrpAssetRuntimeResources();     },
+                () => { if (!IsHdrpAssetEditorResourcesCorrect())   FixHdrpAssetEditorResources();      },
+                () => { if (!IsSRPBatcherCorrect())                 FixSRPBatcher();                    },
+                () => { if (!IsHdrpAssetDiffusionProfileCorrect())  FixHdrpAssetDiffusionProfile();     });
+        }
 
         bool IsColorSpaceCorrect()
             => PlayerSettings.colorSpace == ColorSpace.Linear;
-        void FixColorSpace(bool fromAsyncUnused)
+        void FixColorSpace()
             => PlayerSettings.colorSpace = ColorSpace.Linear;
 
         bool IsLightmapCorrect()
@@ -319,7 +198,7 @@ namespace UnityEditor.Rendering.HighDefinition
                 && GetLightmapEncodingQualityForPlatformGroup(BuildTargetGroup.Lumin) == LightmapEncodingQualityCopy.High
                 && GetLightmapEncodingQualityForPlatformGroup(BuildTargetGroup.WSA) == LightmapEncodingQualityCopy.High;
         }
-        void FixLightmap(bool fromAsyncUnused)
+        void FixLightmap()
         {
             SetLightmapEncodingQualityForPlatformGroup(BuildTargetGroup.Standalone, LightmapEncodingQualityCopy.High);
             SetLightmapEncodingQualityForPlatformGroup(BuildTargetGroup.Android, LightmapEncodingQualityCopy.High);
@@ -327,23 +206,10 @@ namespace UnityEditor.Rendering.HighDefinition
             SetLightmapEncodingQualityForPlatformGroup(BuildTargetGroup.WSA, LightmapEncodingQualityCopy.High);
         }
 
-        bool IsShadowCorrect()
-            => QualitySettings.shadows == ShadowQuality.All;
-        void FixShadow(bool fromAsyncUnised)
-        {
-            int currentQuality = QualitySettings.GetQualityLevel();
-            for (int i = 0; i < QualitySettings.names.Length; ++i)
-            {
-                QualitySettings.SetQualityLevel(i, applyExpensiveChanges: false);
-                QualitySettings.shadows = ShadowQuality.All;
-            }
-            QualitySettings.SetQualityLevel(currentQuality, applyExpensiveChanges: false);
-        }
-
         bool IsShadowmaskCorrect()
             //QualitySettings.SetQualityLevel.set quality is too costy to be use at frame
             => QualitySettings.shadowmaskMode == ShadowmaskMode.DistanceShadowmask;
-        void FixShadowmask(bool fromAsyncUnused)
+        void FixShadowmask()
         {
             int currentQuality = QualitySettings.GetQualityLevel();
             for (int i = 0; i < QualitySettings.names.Length; ++i)
@@ -369,16 +235,11 @@ namespace UnityEditor.Rendering.HighDefinition
         bool IsHdrpAssetRuntimeResourcesCorrect()
             => IsHdrpAssetUsedCorrect()
             && HDRenderPipeline.defaultAsset.renderPipelineResources != null;
-        void FixHdrpAssetRuntimeResources(bool fromAsyncUnused)
+        void FixHdrpAssetRuntimeResources()
         {
             if (!IsHdrpAssetUsedCorrect())
                 FixHdrpAssetUsed(fromAsync: false);
-
-            var hdrpAsset = HDRenderPipeline.defaultAsset;
-            if (hdrpAsset == null)
-                return;
-
-            hdrpAsset.renderPipelineResources
+            HDRenderPipeline.defaultAsset.renderPipelineResources
                 = AssetDatabase.LoadAssetAtPath<RenderPipelineResources>(HDUtils.GetHDRenderPipelinePath() + "Runtime/RenderPipelineResources/HDRenderPipelineResources.asset");
             ResourceReloader.ReloadAllNullIn(HDRenderPipeline.defaultAsset.renderPipelineResources, HDUtils.GetHDRenderPipelinePath());
         }
@@ -386,33 +247,25 @@ namespace UnityEditor.Rendering.HighDefinition
         bool IsHdrpAssetEditorResourcesCorrect()
             => IsHdrpAssetUsedCorrect()
             && HDRenderPipeline.defaultAsset.renderPipelineEditorResources != null;
-        void FixHdrpAssetEditorResources(bool fromAsyncUnused)
+        void FixHdrpAssetEditorResources()
         {
             if (!IsHdrpAssetUsedCorrect())
                 FixHdrpAssetUsed(fromAsync: false);
-
-            var hdrpAsset = HDRenderPipeline.defaultAsset;
-            if (hdrpAsset == null)
-                return;
-
-            hdrpAsset.renderPipelineEditorResources
+            HDRenderPipeline.defaultAsset.renderPipelineEditorResources
                 = AssetDatabase.LoadAssetAtPath<HDRenderPipelineEditorResources>(HDUtils.GetHDRenderPipelinePath() + "Editor/RenderPipelineResources/HDRenderPipelineEditorResources.asset");
             ResourceReloader.ReloadAllNullIn(HDRenderPipeline.defaultAsset.renderPipelineEditorResources, HDUtils.GetHDRenderPipelinePath());
         }
 
         bool IsSRPBatcherCorrect()
             => IsHdrpAssetUsedCorrect() && HDRenderPipeline.currentAsset.enableSRPBatcher;
-        void FixSRPBatcher(bool fromAsyncUnused)
+        void FixSRPBatcher()
         {
             if (!IsHdrpAssetUsedCorrect())
                 FixHdrpAssetUsed(fromAsync: false);
 
-            var hdrpAsset = HDRenderPipeline.defaultAsset;
-            if (hdrpAsset == null)
-                return;
-
-            hdrpAsset.enableSRPBatcher = true;
-            EditorUtility.SetDirty(hdrpAsset);
+            var hdAsset = HDRenderPipeline.currentAsset;
+            hdAsset.enableSRPBatcher = true;
+            EditorUtility.SetDirty(hdAsset);
         }
 
         bool IsHdrpAssetDiffusionProfileCorrect()
@@ -420,28 +273,14 @@ namespace UnityEditor.Rendering.HighDefinition
             var profileList = HDRenderPipeline.defaultAsset?.diffusionProfileSettingsList;
             return IsHdrpAssetUsedCorrect() && profileList.Length != 0 && profileList.Any(p => p != null);
         }
-        void FixHdrpAssetDiffusionProfile(bool fromAsyncUnused)
+        void FixHdrpAssetDiffusionProfile()
         {
             if (!IsHdrpAssetUsedCorrect())
                 FixHdrpAssetUsed(fromAsync: false);
 
-            var hdrpAsset = HDRenderPipeline.defaultAsset;
-            if (hdrpAsset == null)
-                return;
-
-            var defaultAssetList = hdrpAsset.renderPipelineEditorResources.defaultDiffusionProfileSettingsList;
-            hdrpAsset.diffusionProfileSettingsList = new DiffusionProfileSettings[0]; // clear the diffusion profile list
-
-            foreach (var diffusionProfileAsset in defaultAssetList)
-            {
-                string defaultDiffusionProfileSettingsPath = "Assets/" + HDProjectSettings.projectSettingsFolderPath + "/" + diffusionProfileAsset.name + ".asset";
-                AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(diffusionProfileAsset), defaultDiffusionProfileSettingsPath);
-
-                var userAsset = AssetDatabase.LoadAssetAtPath<DiffusionProfileSettings>(defaultDiffusionProfileSettingsPath);
-                hdrpAsset.AddDiffusionProfile(userAsset);
-            }
-
-            EditorUtility.SetDirty(hdrpAsset);
+            var hdAsset = HDRenderPipeline.currentAsset;
+            hdAsset.diffusionProfileSettingsList = hdAsset.renderPipelineEditorResources.defaultDiffusionProfileSettingsList;
+            EditorUtility.SetDirty(hdAsset);
         }
 
         bool IsDefaultSceneCorrect()
@@ -462,17 +301,14 @@ namespace UnityEditor.Rendering.HighDefinition
             var hdAsset = HDRenderPipeline.currentAsset;
             return hdAsset.defaultVolumeProfile != null && !hdAsset.defaultVolumeProfile.Equals(null);
         }
-        void FixDefaultVolumeProfileAssigned(bool fromAsyncUnused)
+        void FixDefaultVolumeProfileAssigned()
         {
             if (!IsHdrpAssetUsedCorrect())
                 FixHdrpAssetUsed(fromAsync: false);
 
-            var hdrpAsset = HDRenderPipeline.currentAsset;
-            if (hdrpAsset == null)
-                return;
-
-            EditorDefaultSettings.GetOrAssignDefaultVolumeProfile(hdrpAsset);
-            EditorUtility.SetDirty(hdrpAsset);
+            var hdAsset = HDRenderPipeline.currentAsset;
+            EditorDefaultSettings.GetOrAssignDefaultVolumeProfile(hdAsset);
+            EditorUtility.SetDirty(hdAsset);
         }
 
         #endregion
@@ -480,68 +316,53 @@ namespace UnityEditor.Rendering.HighDefinition
         #region HDRP_VR_FIXES
 
         bool IsVRAllCorrect()
-            => IsAllEntryCorrectInScope(InclusiveScope.VR);
+            => IsVRSupportedForCurrentBuildTargetGroupCorrect();
         void FixVRAll()
-            => FixAllEntryInScope(InclusiveScope.VR);
-
-        bool IsVRXRManagementCorrect()
-            => IsAllEntryCorrectInScope(InclusiveScope.XRManagement);
-        void FixVRXRManagement(bool fromAsyncUnused)
-            => FixAllEntryInScope(InclusiveScope.XRManagement);
-
-        bool IsOldVRSystemForCurrentBuildTargetGroupCorrect()
-            => !VREditor.GetVREnabledOnTargetGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-        void FixOldVRSystemForCurrentBuildTargetGroup(bool fromAsyncUnused)
-            => VREditor.SetVREnabledOnTargetGroup(EditorUserBuildSettings.selectedBuildTargetGroup, false);
-
-        bool vrXRManagementInstalledCheck = false;
-        bool IsVRXRManagementPackageInstalledCorrect()
         {
-            m_UsedPackageRetriever.ProcessAsync(
-                   k_XRanagementPackageName,
-                   (installed, info) => vrXRManagementInstalledCheck = installed);
-            return vrXRManagementInstalledCheck;
-        }
-        void FixVRXRManagementPackageInstalled(bool fromAsync)
-        {
-            if (fromAsync)
-                RestartFixAllAfterDomainReload();
-            m_PackageInstaller.ProcessAsync(k_XRanagementPackageName, null);
+            m_Fixer.Add(
+                () => { if (!IsVRSupportedForCurrentBuildTargetGroupCorrect())  FixVRSupportedForCurrentBuildTargetGroup(); });
         }
 
-        bool vrLegacyHelpersInstalledCheck = false;
-        bool IsVRLegacyHelpersCorrect()
-        {
-            m_UsedPackageRetriever.ProcessAsync(
-                   k_LegacyInputHelpersPackageName,
-                   (installed, info) => vrLegacyHelpersInstalledCheck = installed);
-            return vrLegacyHelpersInstalledCheck;
-        }
-        void FixVRLegacyHelpers(bool fromAsync)
-        {
-            if (fromAsync)
-                RestartFixAllAfterDomainReload();
-            m_PackageInstaller.ProcessAsync(k_LegacyInputHelpersPackageName, null);
-        }
+        bool IsVRSupportedForCurrentBuildTargetGroupCorrect()
+            => VREditor.GetVREnabledOnTargetGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
+        void FixVRSupportedForCurrentBuildTargetGroup()
+            => VREditor.SetVREnabledOnTargetGroup(EditorUserBuildSettings.selectedBuildTargetGroup, true);
 
         #endregion
 
         #region HDRP_DXR_FIXES
 
         bool IsDXRAllCorrect()
-            => IsAllEntryCorrectInScope(InclusiveScope.DXR);
+            => IsDXRAutoGraphicsAPICorrect()
+            && IsDXRDirect3D12Correct()
+            && IsDXRStaticBatchingCorrect()
+            && IsDXRScreenSpaceShadowCorrect()
+            && IsDXRActivationCorrect()
+            && IsDXRAssetCorrect()
+            && IsDXRShaderConfigCorrect()
+            && IsDXRDefaultSceneCorrect();
 
         void FixDXRAll()
-            => FixAllEntryInScope(InclusiveScope.DXR);
+        {
+            m_Fixer.Add(
+                () => { if (!IsDXRAutoGraphicsAPICorrect())     FixDXRAutoGraphicsAPI();            },
+                () => { if (!IsDXRDirect3D12Correct())          FixDXRDirect3D12(fromAsync: true);  },
+                () => { if (!IsDXRStaticBatchingCorrect())      FixDXRStaticBatching();             },
+                () => { if (!IsDXRScreenSpaceShadowCorrect())   FixDXRScreenSpaceShadow();          },
+                () => { if (!IsDXRActivationCorrect())          FixDXRActivation();                 },
+                () => { if (!IsDXRAssetCorrect())               FixDXRAsset();                      },
+                () => { if (!IsDXRShaderConfigCorrect())        FixDXRShaderConfig();               },
+                () => { if (!IsDXRDefaultSceneCorrect())        FixDXRDefaultScene(fromAsync: true);});
+        }
 
         bool IsDXRAutoGraphicsAPICorrect()
             => !PlayerSettings.GetUseDefaultGraphicsAPIs(CalculateSelectedBuildTarget());
-        void FixDXRAutoGraphicsAPI(bool fromAsyncUnused)
+        void FixDXRAutoGraphicsAPI()
             => PlayerSettings.SetUseDefaultGraphicsAPIs(CalculateSelectedBuildTarget(), false);
-        
+
         bool IsDXRDirect3D12Correct()
-            => PlayerSettings.GetGraphicsAPIs(CalculateSelectedBuildTarget()).FirstOrDefault() == GraphicsDeviceType.Direct3D12 && !HDProjectSettings.wizardNeedRestartAfterChangingToDX12;
-        void FixDXRDirect3D12(bool fromAsyncUnused)
+            => PlayerSettings.GetGraphicsAPIs(CalculateSelectedBuildTarget()).FirstOrDefault() == GraphicsDeviceType.Direct3D12;
+        void FixDXRDirect3D12(bool fromAsync)
         {
             if (GetSupportedGraphicsAPIs(CalculateSelectedBuildTarget()).Contains(GraphicsDeviceType.Direct3D12))
             {
@@ -564,8 +385,9 @@ namespace UnityEditor.Rendering.HighDefinition
                             .Concat(PlayerSettings.GetGraphicsAPIs(buidTarget))
                             .ToArray());
                 }
-                HDProjectSettings.wizardNeedRestartAfterChangingToDX12 = true;
-                m_Fixer.Add(() => ChangedFirstGraphicAPI(buidTarget)); //register reboot at end of operations
+                if (fromAsync)
+                    m_Fixer.Stop();
+                ChangedFirstGraphicAPI(buidTarget);
             }
         }
 
@@ -584,26 +406,17 @@ namespace UnityEditor.Rendering.HighDefinition
                 {
                     if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
                     {
-                        HDProjectSettings.wizardNeedRestartAfterChangingToDX12 = false;
                         RequestCloseAndRelaunchWithCurrentArguments();
                         GUIUtility.ExitGUI();
                     }
                 }
-                else
-                    EditorApplication.quitting += () => HDProjectSettings.wizardNeedRestartAfterChangingToDX12 = false;
             }
-        }
-        
-        void CheckPersistantNeedReboot()
-        {
-            if (HDProjectSettings.wizardNeedRestartAfterChangingToDX12)
-                EditorApplication.quitting += () => HDProjectSettings.wizardNeedRestartAfterChangingToDX12 = false;
         }
 
         bool IsDXRAssetCorrect()
             => HDRenderPipeline.defaultAsset != null
             && HDRenderPipeline.defaultAsset.renderPipelineRayTracingResources != null;
-        void FixDXRAsset(bool fromAsyncUnused)
+        void FixDXRAsset()
         {
             if (!IsHdrpAssetUsedCorrect())
                 FixHdrpAssetUsed(fromAsync: false);
@@ -611,159 +424,24 @@ namespace UnityEditor.Rendering.HighDefinition
                 = AssetDatabase.LoadAssetAtPath<HDRenderPipelineRayTracingResources>(HDUtils.GetHDRenderPipelinePath() + "Runtime/RenderPipelineResources/HDRenderPipelineRayTracingResources.asset");
             ResourceReloader.ReloadAllNullIn(HDRenderPipeline.defaultAsset.renderPipelineRayTracingResources, HDUtils.GetHDRenderPipelinePath());
         }
-        
+
         bool IsDXRShaderConfigCorrect()
         {
-            if (!lastPackageConfigInstalledCheck)
-                return false;
-            
-            bool found = false;
-            using (StreamReader streamReader = new StreamReader("LocalPackages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl"))
+            // To be accurate, to check that the config package is doing the right thing is to make sure we are referencing in the manifest a specific folder (defined by us)
+            // and to check if the ray tracing shader config value is set to 1 in the .cs.hlsl file. Because doing that is a bit of an over check, let's supposed that if
+            // we are pointing to our custom location, it means it has been previously set up.
+            StreamReader streamReader = new StreamReader("Packages/manifest.json");
+            while (!streamReader.EndOfStream)
             {
-                while (!streamReader.EndOfStream && !found)
-                    found = streamReader.ReadLine().Contains("#define SHADEROPTIONS_RAYTRACING (1)");
-            }
-            return found;
-        }
-        void FixDXRShaderConfig(bool fromAsyncUnused)
-        {
-            Debug.Log("Fixing DXRShaderConfig");
-            if (!lastPackageConfigInstalledCheck)
-            {
-                InstallLocalConfigurationPackage(() => FixDXRShaderConfig(false));
-            }
-            else
-            {
-                // Then we want to make sure that the shader config value is set to 1
-                string[] lines = System.IO.File.ReadAllLines("LocalPackages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl");
-                for (int lineIdx = 0; lineIdx < lines.Length; ++lineIdx)
+                string line = streamReader.ReadLine();
+                if (line == "    \"com.unity.render-pipelines.high-definition-config\": \"file:../LocalPackages/com.unity.render-pipelines.high-definition-config\",")
                 {
-                    if (lines[lineIdx].Contains("SHADEROPTIONS_RAYTRACING"))
-                    {
-                        lines[lineIdx] = "#define SHADEROPTIONS_RAYTRACING (1)";
-                        break;
-                    }
+                    streamReader.Close();
+                    return true;
                 }
-                File.WriteAllLines("LocalPackages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl", lines);
             }
-        }
-
-        bool IsDXRScreenSpaceShadowCorrect()
-            => HDRenderPipeline.currentAsset != null
-            && HDRenderPipeline.currentAsset.currentPlatformRenderPipelineSettings.hdShadowInitParams.supportScreenSpaceShadows;
-        void FixDXRScreenSpaceShadow(bool fromAsyncUnused)
-        {
-            if (!IsHdrpAssetUsedCorrect())
-                FixHdrpAssetUsed(fromAsync: false);
-            //as property returning struct make copy, use serializedproperty to modify it
-            var serializedObject = new SerializedObject(HDRenderPipeline.currentAsset);
-            var propertySupportScreenSpaceShadow = serializedObject.FindProperty("m_RenderPipelineSettings.hdShadowInitParams.supportScreenSpaceShadows");
-            propertySupportScreenSpaceShadow.boolValue = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        bool IsDXRReflectionsCorrect()
-            => HDRenderPipeline.currentAsset != null
-            && HDRenderPipeline.currentAsset.currentPlatformRenderPipelineSettings.supportSSR;
-        void FixDXRReflections(bool fromAsyncUnused)
-        {
-            if (!IsHdrpAssetUsedCorrect())
-                FixHdrpAssetUsed(fromAsync: false);
-            //as property returning struct make copy, use serializedproperty to modify it
-            var serializedObject = new SerializedObject(HDRenderPipeline.currentAsset);
-            var propertySSR = serializedObject.FindProperty("m_RenderPipelineSettings.supportSSR");
-            propertySSR.boolValue = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        bool IsDXRStaticBatchingCorrect()
-            => !GetStaticBatching(CalculateSelectedBuildTarget());
-        void FixDXRStaticBatching(bool fromAsyncUnused)
-        {
-            SetStaticBatching(CalculateSelectedBuildTarget(), false);
-        }
-
-        bool IsDXRActivationCorrect()
-            => HDRenderPipeline.currentAsset != null
-            && HDRenderPipeline.currentAsset.currentPlatformRenderPipelineSettings.supportRayTracing;
-        void FixDXRActivation(bool fromAsyncUnused)
-        {
-            if (!IsHdrpAssetUsedCorrect())
-                FixHdrpAssetUsed(fromAsync: false);
-            //as property returning struct make copy, use serializedproperty to modify it
-            var serializedObject = new SerializedObject(HDRenderPipeline.currentAsset);
-            var propertySupportRayTracing = serializedObject.FindProperty("m_RenderPipelineSettings.supportRayTracing");
-            propertySupportRayTracing.boolValue = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        bool IsDXRDefaultSceneCorrect()
-            => HDProjectSettings.defaultDXRScenePrefab != null;
-        void FixDXRDefaultScene(bool fromAsync)
-        {
-            if (ObjectSelector.opened)
-                return;
-            CreateOrLoadDefaultScene(fromAsync ? () => m_Fixer.Stop() : (Action)null, scene => HDProjectSettings.defaultDXRScenePrefab = scene, forDXR: true);
-            m_DefaultDXRScene.SetValueWithoutNotify(HDProjectSettings.defaultDXRScenePrefab);
-        }
-
-        #endregion
-
-        #region Packman
-
-        const string k_HdrpPackageName = "com.unity.render-pipelines.high-definition";
-        const string k_HdrpConfigPackageName = "com.unity.render-pipelines.high-definition-config";
-        const string k_LocalHdrpConfigPackagePath = "LocalPackages/com.unity.render-pipelines.high-definition-config";
-        const string k_XRanagementPackageName = "com.unity.xr.management";
-        const string k_LegacyInputHelpersPackageName = "com.unity.xr.legacyinputhelpers";
-
-        bool lastPackageConfigInstalledCheck = false;
-        void IsLocalConfigurationPackageInstalledAsync(Action<bool> callback)
-        {
-            if (!Directory.Exists(k_LocalHdrpConfigPackagePath))
-            {
-                callback?.Invoke(lastPackageConfigInstalledCheck = false);
-                return;
-            }
-            
-            m_UsedPackageRetriever.ProcessAsync(
-                k_HdrpConfigPackageName,
-                (installed, info) =>
-                {
-                    // installed is not used because this one will be always installed
-
-                    DirectoryInfo directoryInfo = new DirectoryInfo(info.resolvedPath);
-                    string recomposedPath = $"{directoryInfo.Parent.Name}{Path.DirectorySeparatorChar}{directoryInfo.Name}";
-                    lastPackageConfigInstalledCheck =
-                        info.source == PackageManager.PackageSource.Local
-                        && info.resolvedPath.EndsWith(recomposedPath);
-                    callback?.Invoke(lastPackageConfigInstalledCheck);
-                });
-        }
-
-        void InstallLocalConfigurationPackage(Action onCompletion)
-            => m_UsedPackageRetriever.ProcessAsync(
-                k_HdrpConfigPackageName,
-                (installed, info) =>
-                {
-                    // installed is not used because this one will be always installed
-
-                    if (!Directory.Exists(k_LocalHdrpConfigPackagePath))
-                    {
-                        CopyFolder(info.resolvedPath, k_LocalHdrpConfigPackagePath);
-                    }
-
-                    m_PackageInstaller.ProcessAsync($"file:../{k_LocalHdrpConfigPackagePath}", () =>
-                    {
-                        lastPackageConfigInstalledCheck = true;
-                        onCompletion?.Invoke();
-                    });
-                });
-        
-        void RefreshDisplayOfConfigPackageArea()
-        {
-            if (!m_UsedPackageRetriever.isRunning)
-                IsLocalConfigurationPackageInstalledAsync(present => UpdateDisplayOfConfigPackageArea(present ? ConfigPackageState.Present : ConfigPackageState.Missing));
+            streamReader.Close();
+            return false;
         }
 
         static void CopyFolder(string sourceFolder, string destFolder)
@@ -786,205 +464,110 @@ namespace UnityEditor.Rendering.HighDefinition
             }
         }
 
-        class UsedPackageRetriever
+        static PackageManager.Requests.AddRequest s_AddRequest = null;
+        void FixDXRShaderConfig()
         {
-            PackageManager.Requests.ListRequest m_CurrentRequest;
-            Action<bool, PackageManager.PackageInfo> m_CurrentAction;
-            string m_CurrentPackageName;
-
-            Queue<(string packageName, Action<bool, PackageManager.PackageInfo> action)> m_Queue = new Queue<(string packageName, Action<bool, PackageManager.PackageInfo> action)>();
-            
-            bool isCurrentInProgress => m_CurrentRequest != null && !m_CurrentRequest.Equals(null) && !m_CurrentRequest.IsCompleted;
-
-            public bool isRunning => isCurrentInProgress || m_Queue.Count() > 0;
-
-            public void ProcessAsync(string packageName, Action<bool, PackageManager.PackageInfo> action)
+            // Make sure to delete the previous local package (if any)
+            if (Directory.Exists("LocalPackages/com.unity.render-pipelines.high-definition-config"))
             {
-                if (isCurrentInProgress)
-                    m_Queue.Enqueue((packageName, action));
-                else
-                    Start(packageName, action);
+                Directory.Delete("LocalPackages/com.unity.render-pipelines.high-definition-config", true);
             }
 
-            void Start(string packageName, Action<bool, PackageManager.PackageInfo> action)
+            // First let's try to grab the cached version of pack-man
+            bool found = false;
+            string packageCache = Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%");
+            var directories = Directory.GetDirectories(packageCache + "/Unity/cache/packages/packages.unity.com");
+            for(int dirIdx = 0; dirIdx < directories.Length; ++dirIdx)
             {
-                m_CurrentAction = action;
-                m_CurrentPackageName = packageName;
-                m_CurrentRequest = PackageManager.Client.List(offlineMode: true, includeIndirectDependencies: true);
-                EditorApplication.update += Progress;
-            }
-
-            void Progress()
-            {
-                //Can occures on Wizard close or if scripts reloads
-                if (m_CurrentRequest == null || m_CurrentRequest.Equals(null))
+                if (directories[dirIdx].Contains("com.unity.render-pipelines.high-definition-config"))
                 {
-                    EditorApplication.update -= Progress;
-                    return;
+                    CopyFolder(directories[dirIdx], "LocalPackages/com.unity.render-pipelines.high-definition-config");
+                    found = true;
+                    break;
                 }
-
-                if (m_CurrentRequest.IsCompleted)
-                    Finished();
             }
 
-            void Finished()
+            // If we were not able to find it, we can't solve it
+            if (!found)
+                return;
+
+            // Then we want to make sure that the shader config value is set to 1
+            string[] lines = System.IO.File.ReadAllLines("LocalPackages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl");
+            for (int lineIdx = 0; lineIdx < lines.Length; ++lineIdx)
             {
-                EditorApplication.update -= Progress;
-                if (m_CurrentRequest.Status == PackageManager.StatusCode.Success)
+                if (lines[lineIdx].Contains("SHADEROPTIONS_RAYTRACING"))
                 {
-                    var filteredResults = m_CurrentRequest.Result.Where(info => info.name == m_CurrentPackageName);
-                    if (filteredResults.Count() == 0)
-                        m_CurrentAction?.Invoke(false, default);
-                    else
+                    lines[lineIdx] = "#define SHADEROPTIONS_RAYTRACING (1)";
+                    break;
+                }
+            }
+            File.WriteAllLines("LocalPackages/com.unity.render-pipelines.high-definition-config/Runtime/ShaderConfig.cs.hlsl", lines);
+
+            // Replace the path of this package using the packman API
+            s_AddRequest = PackageManager.Client.Add("file:../LocalPackages/com.unity.render-pipelines.high-definition-config");
+            EditorApplication.update += RequestUpdate;
+        }
+
+        void RequestUpdate()
+        {
+            if (s_AddRequest != null)
+            {
+                if (s_AddRequest.Status == PackageManager.StatusCode.Success || s_AddRequest.Status == PackageManager.StatusCode.Failure)
+                {
+                    if (s_AddRequest.Status == PackageManager.StatusCode.Failure)
                     {
-                        PackageManager.PackageInfo result = filteredResults.First();
-                        m_CurrentAction?.Invoke(true, result);
+                        Debug.LogError("Failed to update HDRP Config Package");
+                        Debug.LogError(s_AddRequest.Error.message);
                     }
-                }
-                else if (m_CurrentRequest.Status >= PackageManager.StatusCode.Failure)
-                    Debug.LogError($"Failed to find package {m_CurrentPackageName}. Reason: {m_CurrentRequest.Error.message}");
-                else
-                    Debug.LogError("Unsupported progress state " + m_CurrentRequest.Status);
-
-                m_CurrentRequest = null;
-
-                if (m_Queue.Count > 0)
-                {
-                    (string packageIdOrName, Action<bool, PackageManager.PackageInfo> action) = m_Queue.Dequeue();
-                    EditorApplication.delayCall += () => Start(packageIdOrName, action);
+                    s_AddRequest = null;
+                    EditorApplication.update -= RequestUpdate;
                 }
             }
         }
-        UsedPackageRetriever m_UsedPackageRetriever = new UsedPackageRetriever();
-        
-        class LastAvailablePackageVersionRetriever
+
+        bool IsDXRScreenSpaceShadowCorrect()
+            => HDRenderPipeline.currentAsset != null
+            && HDRenderPipeline.currentAsset.currentPlatformRenderPipelineSettings.hdShadowInitParams.supportScreenSpaceShadows;
+        void FixDXRScreenSpaceShadow()
         {
-            PackageManager.Requests.SearchRequest m_CurrentRequest;
-            Action<string> m_CurrentAction;
-            string m_CurrentPackageName;
-
-            Queue<(string packageName, Action<string> action)> m_Queue = new Queue<(string packageName, Action<string> action)>();
-
-            bool isCurrentInProgress => m_CurrentRequest != null && !m_CurrentRequest.Equals(null) && !m_CurrentRequest.IsCompleted;
-
-            public bool isRunning => isCurrentInProgress || m_Queue.Count() > 0;
-
-            public void ProcessAsync(string packageName, Action<string> action)
-            {
-                if (isCurrentInProgress)
-                    m_Queue.Enqueue((packageName, action));
-                else
-                    Start(packageName, action);
-            }
-
-            void Start(string packageName, Action<string> action)
-            {
-                m_CurrentAction = action;
-                m_CurrentPackageName = packageName;
-                m_CurrentRequest = PackageManager.Client.Search(packageName, offlineMode: false);
-                EditorApplication.update += Progress;
-            }
-
-            void Progress()
-            {
-                //Can occures on Wizard close or if scripts reloads
-                if (m_CurrentRequest == null || m_CurrentRequest.Equals(null))
-                {
-                    EditorApplication.update -= Progress;
-                    return;
-                }
-
-                if (m_CurrentRequest.IsCompleted)
-                    Finished();
-            }
-
-            void Finished()
-            {
-                EditorApplication.update -= Progress;
-                if (m_CurrentRequest.Status == PackageManager.StatusCode.Success)
-                {
-                    string lastVersion = m_CurrentRequest.Result[0].versions.latestCompatible;
-                    m_CurrentAction?.Invoke(lastVersion);
-                }
-                else if (m_CurrentRequest.Status >= PackageManager.StatusCode.Failure)
-                    Debug.LogError($"Failed to find package {m_CurrentPackageName}. Reason: {m_CurrentRequest.Error.message}");
-                else
-                    Debug.LogError("Unsupported progress state " + m_CurrentRequest.Status);
-
-                m_CurrentRequest = null;
-
-                if (m_Queue.Count > 0)
-                {
-                    (string packageIdOrName, Action<string> action) = m_Queue.Dequeue();
-                    EditorApplication.delayCall += () => Start(packageIdOrName, action);
-                }
-            }
+            if (!IsHdrpAssetUsedCorrect())
+                FixHdrpAssetUsed(fromAsync: false);
+            //as property returning struct make copy, use serializedproperty to modify it
+            var serializedObject = new SerializedObject(HDRenderPipeline.currentAsset);
+            var propertySupportScreenSpaceShadow = serializedObject.FindProperty("m_RenderPipelineSettings.hdShadowInitParams.supportScreenSpaceShadows");
+            propertySupportScreenSpaceShadow.boolValue = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
         }
-        LastAvailablePackageVersionRetriever m_LastAvailablePackageRetriever = new LastAvailablePackageVersionRetriever();
-        
-        class PackageInstaller
+
+        bool IsDXRStaticBatchingCorrect()
+            => !GetStaticBatching(CalculateSelectedBuildTarget());
+        void FixDXRStaticBatching()
+            => SetStaticBatching(CalculateSelectedBuildTarget(), false);
+
+        bool IsDXRActivationCorrect()
+            => HDRenderPipeline.currentAsset != null
+            && HDRenderPipeline.currentAsset.currentPlatformRenderPipelineSettings.supportRayTracing;
+        void FixDXRActivation()
         {
-            PackageManager.Requests.AddRequest m_CurrentRequest;
-            Action m_CurrentAction;
-            string m_CurrentPackageName;
-
-            Queue<(string packageName, Action action)> m_Queue = new Queue<(string packageName, Action action)>();
-
-            bool isCurrentInProgress => m_CurrentRequest != null && !m_CurrentRequest.Equals(null) && !m_CurrentRequest.IsCompleted;
-
-            public bool isRunning => isCurrentInProgress || m_Queue.Count() > 0;
-
-            public void ProcessAsync(string packageName, Action action)
-            {
-                if (isCurrentInProgress)
-                    m_Queue.Enqueue((packageName, action));
-                else
-                    Start(packageName, action);
-            }
-
-            void Start(string packageName, Action action)
-            {
-                m_CurrentAction = action;
-                m_CurrentPackageName = packageName;
-                m_CurrentRequest = PackageManager.Client.Add(packageName);
-                EditorApplication.update += Progress;
-            }
-
-            void Progress()
-            {
-                //Can occures on Wizard close or if scripts reloads
-                if (m_CurrentRequest == null || m_CurrentRequest.Equals(null))
-                {
-                    EditorApplication.update -= Progress;
-                    return;
-                }
-
-                if (m_CurrentRequest.IsCompleted)
-                    Finished();
-            }
-
-            void Finished()
-            {
-                EditorApplication.update -= Progress;
-                if (m_CurrentRequest.Status == PackageManager.StatusCode.Success)
-                {
-                    m_CurrentAction?.Invoke();
-                }
-                else if (m_CurrentRequest.Status >= PackageManager.StatusCode.Failure)
-                    Debug.LogError($"Failed to find package {m_CurrentPackageName}. Reason: {m_CurrentRequest.Error.message}");
-                else
-                    Debug.LogError("Unsupported progress state " + m_CurrentRequest.Status);
-
-                m_CurrentRequest = null;
-
-                if (m_Queue.Count > 0)
-                {
-                    (string packageIdOrName, Action action) = m_Queue.Dequeue();
-                    EditorApplication.delayCall += () => Start(packageIdOrName, action);
-                }
-            }
+            if (!IsHdrpAssetUsedCorrect())
+                FixHdrpAssetUsed(fromAsync: false);
+            //as property returning struct make copy, use serializedproperty to modify it
+            var serializedObject = new SerializedObject(HDRenderPipeline.currentAsset);
+            var propertySupportRayTracing = serializedObject.FindProperty("m_RenderPipelineSettings.supportRayTracing");
+            propertySupportRayTracing.boolValue = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
         }
-        PackageInstaller m_PackageInstaller = new PackageInstaller();
+
+        bool IsDXRDefaultSceneCorrect()
+            => HDProjectSettings.defaultDXRScenePrefab != null;
+        void FixDXRDefaultScene(bool fromAsync)
+        {
+            if (ObjectSelector.opened)
+                return;
+            CreateOrLoadDefaultScene(fromAsync ? () => m_Fixer.Stop() : (Action)null, scene => HDProjectSettings.defaultDXRScenePrefab = scene, forDXR: true);
+            m_DefaultDXRScene.SetValueWithoutNotify(HDProjectSettings.defaultDXRScenePrefab);
+        }
+
         #endregion
     }
 }

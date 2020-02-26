@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor.Graphing.Util;
 using UnityEditor.ShaderGraph;
-using UnityEditor.ShaderGraph.Internal;
 using UnityEditor.ShaderGraph.Drawing;
 using UnityEditor.ShaderGraph.Drawing.Controls;
 using UnityEditor.Rendering.HighDefinition;
@@ -88,7 +87,7 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                 if (m_Node.distortion.isOn)
                 {
                     ++indentLevel;
-                    ps.Add(new PropertyRow(CreateLabel("Distortion Blend Mode", indentLevel)), (row) =>
+                    ps.Add(new PropertyRow(CreateLabel("Mode", indentLevel)), (row) =>
                     {
                         row.Add(new EnumField(DistortionMode.Add), (field) =>
                         {
@@ -96,7 +95,7 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                             field.RegisterValueChangedCallback(ChangeDistortionMode);
                         });
                     });
-                    ps.Add(new PropertyRow(CreateLabel("Distortion Depth Test", indentLevel)), (row) =>
+                    ps.Add(new PropertyRow(CreateLabel("Depth Test", indentLevel)), (row) =>
                     {
                         row.Add(new Toggle(), (toggle) =>
                         {
@@ -117,7 +116,7 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                     });
                 });
 
-                ps.Add(new PropertyRow(CreateLabel("Depth Write", indentLevel)), (row) =>
+                ps.Add(new PropertyRow(CreateLabel("ZWrite", indentLevel)), (row) =>
                 {
                     row.Add(new Toggle(), (toggle) =>
                     {
@@ -138,7 +137,7 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                     });
                 }
 
-                ps.Add(new PropertyRow(CreateLabel("Depth Test", indentLevel)), (row) =>
+                ps.Add(new PropertyRow(CreateLabel("Z Test", indentLevel)), (row) =>
                 {
                     row.Add(new EnumField(m_Node.zTest), (e) =>
                     {
@@ -165,15 +164,6 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                 {
                     field.value = m_Node.doubleSidedMode;
                     field.RegisterValueChangedCallback(ChangeDoubleSidedMode);
-                });
-            });
-
-            ps.Add(new PropertyRow(CreateLabel("Fragment Normal Space", indentLevel)), (row) =>
-            {
-                row.Add(new EnumField(NormalDropOffSpace.Tangent), (field) =>
-                {
-                    field.value = m_Node.normalDropOffSpace;
-                    field.RegisterValueChangedCallback(ChangeSpaceOfNormalDropOffMode);
                 });
             });
 
@@ -477,15 +467,6 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
                 }
             }
 
-            ps.Add(new PropertyRow(CreateLabel("DOTS instancing", indentLevel)), (row) =>
-            {
-                row.Add(new Toggle(), (toggle) =>
-                {
-                    toggle.value = m_Node.dotsInstancing.isOn;
-                    toggle.OnToggleChanged(ChangeDotsInstancing);
-                });
-            });
-
             ps.Add(new PropertyRow(CreateLabel("Support LOD CrossFade", indentLevel)), (row) =>
             {
                 row.Add(new Toggle(), (toggle) =>
@@ -608,15 +589,6 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
 
             m_Node.owner.owner.RegisterCompleteObjectUndo("Double-Sided Mode Change");
             m_Node.doubleSidedMode = (DoubleSidedMode)evt.newValue;
-        }
-
-        void ChangeSpaceOfNormalDropOffMode(ChangeEvent<Enum> evt)
-        {
-              if (Equals(m_Node.normalDropOffSpace, evt.newValue))
-                return;
-
-            m_Node.owner.owner.RegisterCompleteObjectUndo("Normal Space Drop-Off Mode Change");
-            m_Node.normalDropOffSpace = (NormalDropOffSpace)evt.newValue;
         }
 
         void ChangeBaseParametrization(ChangeEvent<Enum> evt)
@@ -996,14 +968,6 @@ namespace UnityEditor.Rendering.HighDefinition.Drawing
 
             m_Node.owner.owner.RegisterCompleteObjectUndo("ZTest Change");
             m_Node.zTest = (CompareFunction)evt.newValue;
-        }
-
-        void ChangeDotsInstancing(ChangeEvent<bool> evt)
-        {
-            m_Node.owner.owner.RegisterCompleteObjectUndo("DotsInstancing Change");
-            ToggleData td = m_Node.dotsInstancing;
-            td.isOn = evt.newValue;
-            m_Node.dotsInstancing = td;
         }
 
         void ChangeSupportLODCrossFade(ChangeEvent<bool> evt)

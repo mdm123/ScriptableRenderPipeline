@@ -22,7 +22,6 @@ class VFXContextEditor : VFXSlotContainerEditor
     SerializedObject dataObject;
 
     SerializedObject srpSubOutputObject;
-    private bool subOutputObjectInitialized = false;
 
     float m_Width;
 
@@ -40,7 +39,8 @@ class VFXContextEditor : VFXSlotContainerEditor
             spaceProperty = null;
         }
 
-        subOutputObjectInitialized = false;
+        UnityEngine.Object[] allSRPSubOutputs = targets.OfType<VFXAbstractRenderedOutput>().Select(t => t.subOutput).Where(t => t != null).ToArray();
+        srpSubOutputObject = allSRPSubOutputs.Length > 0 ? new SerializedObject(allSRPSubOutputs) : null;
 
         base.OnEnable();
     }
@@ -64,13 +64,6 @@ class VFXContextEditor : VFXSlotContainerEditor
 
     public override void DoInspectorGUI()
     {
-        if (!subOutputObjectInitialized)
-        {
-            UnityEngine.Object[] allSRPSubOutputs = targets.OfType<VFXAbstractRenderedOutput>().Select(t => t.subOutput).Where(t => t != null).ToArray();
-            srpSubOutputObject = allSRPSubOutputs.Length > 0 ? new SerializedObject(allSRPSubOutputs) : null;
-            subOutputObjectInitialized = true;
-        }
-
         DisplaySpace();
         base.DoInspectorGUI();
     }
@@ -172,7 +165,7 @@ class VFXContextEditor : VFXSlotContainerEditor
                             int size = VFXExpressionHelper.GetSizeOfType(attr.attrib.type) * 4;
                             GUILayout.Label(size + " byte" + (size > 1 ? "s" : ""), Styles.cell, GUILayout.Width(64));
                             var mode = attr.mode;
-                            GUILayout.Label(mode.ToString(), Styles.cell, GUILayout.Width(72));
+                            GUILayout.Label(mode.ToString(), Styles.cell, GUILayout.Width(64));
                         }
                     }
                 }

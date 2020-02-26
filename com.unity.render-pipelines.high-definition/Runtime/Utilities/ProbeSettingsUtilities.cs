@@ -19,15 +19,12 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <param name="probePosition">Position to apply. (Read only)</param>
         /// <param name="cameraSettings">Settings to update.</param>
         /// <param name="cameraPosition">Position to update.</param>
-        /// <param name="referenceFieldOfView">Reference field of view</param>
-        /// <param name="referenceAspect">Reference aspect ratio</param>
         public static void ApplySettings(
             ref ProbeSettings settings,                             // In Parameter
             ref ProbeCapturePositionSettings probePosition,         // In parameter
             ref CameraSettings cameraSettings,                      // InOut parameter
             ref CameraPositionSettings cameraPosition,              // InOut parameter
-            float referenceFieldOfView = 90,
-            float referenceAspect = 1
+            float referenceFieldOfView = 90
         )
         {
             cameraSettings = settings.cameraSettings;
@@ -42,7 +39,7 @@ namespace UnityEngine.Rendering.HighDefinition
                     ApplyPlanarFrustumHandling(
                         ref settings, ref probePosition,
                         ref cameraSettings, ref cameraPosition,
-                        referenceFieldOfView, referenceAspect
+                        referenceFieldOfView
                     );
                     break;
                 case ProbeSettings.ProbeType.ReflectionProbe:
@@ -160,15 +157,13 @@ namespace UnityEngine.Rendering.HighDefinition
             ref ProbeCapturePositionSettings probePosition,         // In parameter
             ref CameraSettings cameraSettings,                      // InOut parameter
             ref CameraPositionSettings cameraPosition,              // InOut parameter
-            float referenceFieldOfView, float referenceAspect
+            float referenceFieldOfView
         )
         {
             const float k_MaxFieldOfView = 170;
 
             var proxyMatrix = Matrix4x4.TRS(probePosition.proxyPosition, probePosition.proxyRotation, Vector3.one);
             var mirrorPosition = proxyMatrix.MultiplyPoint(settings.proxySettings.mirrorPositionProxySpace);
-
-            cameraSettings.frustum.aspect = referenceAspect;
 
             switch (settings.frustum.fieldOfViewMode)
             {

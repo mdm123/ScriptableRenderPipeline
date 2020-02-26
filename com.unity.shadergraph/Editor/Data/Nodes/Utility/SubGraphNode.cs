@@ -186,7 +186,7 @@ namespace UnityEditor.ShaderGraph
 
             var inputVariableName = $"_{GetVariableNameForNode()}";
             
-            SubShaderGenerator.GenerateSurfaceInputTransferCode(sb, asset.requirements, asset.inputStructName, inputVariableName);
+            GenerationUtils.GenerateSurfaceInputTransferCode(sb, asset.requirements, asset.inputStructName, inputVariableName);
 
             foreach (var outSlot in asset.outputs)
                 sb.AppendLine("{0} {1};", outSlot.concreteValueType.ToShaderString(asset.outputPrecision), GetVariableNameForSlot(outSlot.id));
@@ -233,21 +233,14 @@ namespace UnityEditor.ShaderGraph
         
         public void Reload(HashSet<string> changedFileDependencies)
         {
-            if (asset == null)
+            if (asset == null || hasError)
             {
                 return;
             }
-
             if (changedFileDependencies.Contains(asset.assetGuid) || asset.descendents.Any(changedFileDependencies.Contains))
             {
                 m_SubGraph = null;
                 UpdateSlots();
-
-                if (hasError)
-                {
-                    return;
-                }
-
                 owner.ClearErrorsForNode(this);
                 ValidateNode();
                 Dirty(ModificationScope.Graph);

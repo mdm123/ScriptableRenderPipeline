@@ -206,8 +206,13 @@ namespace UnityEditor.Experimental.Rendering.Universal
                     blendStyleIndices.Add(i);
 
                     ref var blendStyle = ref rendererData.lightBlendStyles[i];
-                    blendStyleNames.Add(blendStyle.name);
-                    m_AnyBlendStyleEnabled = true;
+                    if (blendStyle.enabled)
+                    {
+                        blendStyleNames.Add(blendStyle.name);
+                        m_AnyBlendStyleEnabled = true;
+                    }
+                    else
+                        blendStyleNames.Add(blendStyle.name + " (Disabled)");
                 }
             }
             else

@@ -1,108 +1,40 @@
 using System;
 using UnityEngine.Experimental.Rendering;
 
-#if UNITY_EDITOR
-    using UnityEditor;
-#endif // UNITY_EDITOR
-
 namespace UnityEngine.Rendering.HighDefinition
 {
-    /// <summary>
-    /// A volume component that holds settings for the Path Tracing effect.
-    /// </summary>
-    [Serializable, VolumeComponentMenu("Ray Tracing/Path Tracing (Preview)")]
+    [Serializable, VolumeComponentMenu("Path Tracing")]
     public sealed class PathTracing : VolumeComponent
     {
-        /// <summary>
-        /// Enables path tracing (thus disabling most other passes).
-        /// </summary>
         [Tooltip("Enables path tracing (thus disabling most other passes).")]
         public BoolParameter enable = new BoolParameter(false);
 
-        /// <summary>
-        /// Defines the layers that path tracing should include.
-        /// </summary>
         [Tooltip("Defines the layers that path tracing should include.")]
         public LayerMaskParameter layerMask = new LayerMaskParameter(-1);
 
-        /// <summary>
-        /// Defines the maximum number of paths cast within each pixel, over time (one per frame).
-        /// </summary>
-        [Tooltip("Defines the maximum number of paths cast within each pixel, over time (one per frame).")]
-        public ClampedIntParameter maximumSamples = new ClampedIntParameter(256, 1, 4096);
+        [Tooltip("Defines the maximum number of paths cast within each pixel.")]
+        public ClampedIntParameter maximumSamples = new ClampedIntParameter(256, 1, 1024);
 
-        /// <summary>
-        /// Defines the minimum number of bounces for each path.
-        /// </summary>
         [Tooltip("Defines the minimum number of bounces for each path.")]
         public ClampedIntParameter minimumDepth = new ClampedIntParameter(1, 1, 10);
 
-        /// <summary>
-        /// Defines the maximum number of bounces for each path.
-        /// </summary>
         [Tooltip("Defines the maximum number of bounces for each path.")]
-        public ClampedIntParameter maximumDepth = new ClampedIntParameter(4, 1, 10);
+        public ClampedIntParameter maximumDepth = new ClampedIntParameter(3, 1, 10);
 
-        /// <summary>
-        /// Defines the maximum intensity value computed for a path segment.
-        /// </summary>
-        [Tooltip("Defines the maximum intensity value computed for a path segment.")]
+        [Tooltip("Defines the maximum intensity value computed for a path.")]
         public ClampedFloatParameter maximumIntensity = new ClampedFloatParameter(10f, 0f, 100f);
     }
     public partial class HDRenderPipeline
     {
+        // String values
         const string m_PathTracingRayGenShaderName = "RayGen";
-        uint currentIteration = 0;
-#if UNITY_EDITOR
-        uint maxIteration = 0;
-#endif // UNITY_EDITOR
 
-        void InitPathTracing()
+        public void InitPathTracing()
         {
-#if UNITY_EDITOR
-            Undo.postprocessModifications += UndoRecordedCallback;
-            Undo.undoRedoPerformed += UndoPerformedCallback;
-#endif // UNITY_EDITOR
         }
 
-        void ReleasePathTracing()
+        public void ReleasePathTracing()
         {
-#if UNITY_EDITOR
-            Undo.postprocessModifications -= UndoRecordedCallback;
-            Undo.undoRedoPerformed -= UndoPerformedCallback;
-#endif // UNITY_EDITOR
-        }
-
-#if UNITY_EDITOR
-
-        private void ResetIteration()
-        {
-            // If we just changed the sample count, we don't want to reset the iteration
-            PathTracing pathTracingSettings = VolumeManager.instance.stack.GetComponent<PathTracing>();
-            if (maxIteration != pathTracingSettings.maximumSamples.value)
-                maxIteration = (uint) pathTracingSettings.maximumSamples.value;
-            else
-                currentIteration = 0;
-        }
-
-        private UndoPropertyModification[] UndoRecordedCallback(UndoPropertyModification[] modifications)
-        {
-            ResetIteration();
-
-            return modifications;
-        }
-
-        private void UndoPerformedCallback()
-        {
-            ResetIteration();
-        }
-
-#endif // UNITY_EDITOR
-
-        private void CheckCameraChange(HDCamera hdCamera)
-        {
-            if (hdCamera.mainViewConstants.nonJitteredViewProjMatrix != (hdCamera.mainViewConstants.prevViewProjMatrix))
-                currentIteration = 0;
         }
 
         static RTHandle PathTracingHistoryBufferAllocatorFunction(string viewName, int frameIndex, RTHandleSystem rtHandleSystem)
@@ -112,16 +44,15 @@ namespace UnityEngine.Rendering.HighDefinition
                                         name: string.Format("PathTracingHistoryBuffer{0}", frameIndex));
         }
 
-        void RenderPathTracing(HDCamera hdCamera, CommandBuffer cmd, RTHandle outputTexture, ScriptableRenderContext renderContext, int frameCount)
+        public void RenderPathTracing(HDCamera hdCamera, CommandBuffer cmd, RTHandle outputTexture, ScriptableRenderContext renderContext, int frameCount)
         {
+            // First thing to check is: Do we have a valid ray-tracing environment?
             RayTracingShader pathTracingShader = m_Asset.renderPipelineRayTracingResources.pathTracing;
-            PathTracing pathTracingSettings = hdCamera.volumeStack.GetComponent<PathTracing>();
+            PathTracing pathTracingSettings = VolumeManager.instance.stack.GetComponent<PathTracing>();
 
-            // Check the validity of the state before moving on with the computation
+            // Check the validity of the state before computing the effect
             if (!pathTracingShader || !pathTracingSettings.enable.value)
                 return;
-
-            CheckCameraChange(hdCamera);
 
             // Inject the ray-tracing sampling data
             BlueNoise blueNoiseManager = GetBlueNoiseManager();
@@ -134,8 +65,8 @@ namespace UnityEngine.Rendering.HighDefinition
             // Grab the acceleration structure and the list of HD lights for the target camera
             RayTracingAccelerationStructure accelerationStructure = RequestAccelerationStructure();
             HDRaytracingLightCluster lightCluster = RequestLightCluster();
-            LightCluster lightClusterSettings = hdCamera.volumeStack.GetComponent<LightCluster>();
-            RayTracingSettings rayTracingSettings = hdCamera.volumeStack.GetComponent<RayTracingSettings>();
+            LightCluster lightClusterSettings = VolumeManager.instance.stack.GetComponent<LightCluster>();
+            RayTracingSettings rayTracingSettings = VolumeManager.instance.stack.GetComponent<RayTracingSettings>();
 
             // Define the shader pass to use for the path tracing pass
             cmd.SetRayTracingShaderPass(pathTracingShader, "PathTracingDXR");
@@ -156,8 +87,9 @@ namespace UnityEngine.Rendering.HighDefinition
             cmd.SetGlobalFloat(HDShaderIDs._RaytracingCameraNearPlane, hdCamera.camera.nearClipPlane);
 
             // Set the data for the ray generation
+            //cmd.SetRayTracingTextureParam(pathTracingShader, HDShaderIDs._DepthTexture, m_SharedRTManager.GetDepthStencilBuffer());
             cmd.SetRayTracingTextureParam(pathTracingShader, HDShaderIDs._CameraColorTextureRW, outputTexture);
-            cmd.SetGlobalInt(HDShaderIDs._RaytracingFrameIndex, (int)currentIteration++);
+            cmd.SetGlobalInt(HDShaderIDs._RaytracingFrameIndex, frameCount);
 
             // Compute an approximate pixel spread angle value (in radians)
             cmd.SetRayTracingFloatParam(pathTracingShader, HDShaderIDs._RaytracingPixelSpreadAngle, GetPixelSpreadAngle(hdCamera.camera.fieldOfView, hdCamera.actualWidth, hdCamera.actualHeight));

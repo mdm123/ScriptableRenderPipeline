@@ -21,7 +21,8 @@ Shader "Hidden/HDRP/Sky/ProceduralSky"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Sky/SkyUtils.hlsl"
 
-    float _SkyIntensity;
+    float4   _SkyParam; // x exposure, y multiplier
+
     float _SunSize;
     float _SunSizeConvergence;
     float _AtmosphereThickness;
@@ -199,7 +200,7 @@ Shader "Hidden/HDRP/Sky/ProceduralSky"
             cIn = frontColor * (kInvWavelength * kKrESun);
             cOut = frontColor * kKmESun;
 
-            skyColor = (cIn * getRayleighPhase(_SunDirection.xyz, -eyeRay));
+            skyColor = _SkyParam.y * (cIn * getRayleighPhase(_SunDirection.xyz, -eyeRay));
         }
         else
         {
@@ -240,7 +241,7 @@ Shader "Hidden/HDRP/Sky/ProceduralSky"
             cIn = frontColor * (kInvWavelength * kKrESun + kKmESun);
             cOut = clamp(attenuate, 0.0, 1.0);
 
-            groundColor = (cIn + _GroundColor.rgb * _GroundColor.rgb * cOut);
+            groundColor = _SkyParam.y * (cIn + _GroundColor.rgb * _GroundColor.rgb * cOut);
         }
 
         float3 sunColor = float3(0.0, 0.0, 0.0);
@@ -271,7 +272,7 @@ Shader "Hidden/HDRP/Sky/ProceduralSky"
         }
     #endif
 
-        return float4(col * _SkyIntensity, 1.0);
+        return float4(col * _SkyParam.x, 1.0);
     }
 
     float4 FragBaking(Varyings input) : SV_Target

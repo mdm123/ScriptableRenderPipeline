@@ -13,7 +13,6 @@ using UnityEditor.ShaderGraph.Internal;
 using UnityEngine.UIElements;
 using Edge = UnityEditor.Experimental.GraphView.Edge;
 using UnityEditor.VersionControl;
-using UnityEditor.Searcher;
 
 
 namespace UnityEditor.ShaderGraph.Drawing
@@ -165,13 +164,28 @@ namespace UnityEditor.ShaderGraph.Drawing
                     EditorGUI.BeginChangeCheck();
                     GUILayout.Label("Precision");
                     graph.concretePrecision = (ConcretePrecision)EditorGUILayout.EnumPopup(graph.concretePrecision, GUILayout.Width(100f));
-                    GUILayout.Space(4);
                     if (EditorGUI.EndChangeCheck())
                     {
                         var nodeList = m_GraphView.Query<MaterialNodeView>().ToList();
                         m_ColorManager.SetNodesDirty(nodeList);
                         graph.ValidateGraph();
                         m_ColorManager.UpdateNodeViews(nodeList);
+                        foreach (var node in graph.GetNodes<AbstractMaterialNode>())
+                        {
+                            node.Dirty(ModificationScope.Graph);
+                        }
+                    }
+
+                    EditorGUI.BeginChangeCheck();
+                    GUILayout.Label("Target");
+                    graph.activeTargetIndex = EditorGUILayout.Popup(graph.activeTargetIndex, 
+                        graph.validTargets.Select(x => x.displayName).ToArray(), GUILayout.Width(100f));
+                    GUILayout.Label("Implementations");
+                    graph.activeTargetImplementationBitmask = EditorGUILayout.MaskField(graph.activeTargetImplementationBitmask, 
+                        graph.validImplementations.Select(x => x.displayName).ToArray(), GUILayout.Width(100f));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        graph.UpdateTargets();
                         foreach (var node in graph.GetNodes<AbstractMaterialNode>())
                         {
                             node.Dirty(ModificationScope.Graph);
@@ -215,8 +229,8 @@ namespace UnityEditor.ShaderGraph.Drawing
                             m_UserViewSettings.colorProvider = m_ColorManager.activeProviderName;
                         }
 
-                        UpdateSubWindowsVisibility();
-
+                        m_MasterPreviewView.visible = m_UserViewSettings.isPreviewVisible;
+                        m_BlackboardProvider.blackboard.visible = m_UserViewSettings.isBlackboardVisible;
                         var serializedViewSettings = JsonUtility.ToJson(m_UserViewSettings);
                         EditorUserSettings.SetConfigValue(k_UserViewSettings, serializedViewSettings);
                     }
@@ -227,7 +241,7 @@ namespace UnityEditor.ShaderGraph.Drawing
             var content = new VisualElement { name = "content" };
             {
                 m_GraphView = new MaterialGraphView(graph) { name = "GraphView", viewDataKey = "MaterialGraphView" };
-                m_GraphView.SetupZoom(0.05f, 8);
+                m_GraphView.SetupZoom(0.05f, ContentZoomer.DefaultMaxScale);
                 m_GraphView.AddManipulator(new ContentDragger());
                 m_GraphView.AddManipulator(new SelectionDragger());
                 m_GraphView.AddManipulator(new RectangleSelector());
@@ -239,9 +253,9 @@ namespace UnityEditor.ShaderGraph.Drawing
                 m_BlackboardProvider = new BlackboardProvider(graph);
                 m_GraphView.Add(m_BlackboardProvider.blackboard);
 
-                CreateMasterPreview();
+                m_BlackboardProvider.blackboard.visible = m_UserViewSettings.isBlackboardVisible;
 
-                UpdateSubWindowsVisibility();
+                CreateMasterPreview();
 
                 m_GraphView.graphViewChanged = GraphViewChanged;
 
@@ -252,17 +266,15 @@ namespace UnityEditor.ShaderGraph.Drawing
                 }
             }
 
-            m_SearchWindowProvider = ScriptableObject.CreateInstance<SearcherProvider>();
+            m_SearchWindowProvider = ScriptableObject.CreateInstance<SearchWindowProvider>();
             m_SearchWindowProvider.Initialize(editorWindow, m_Graph, m_GraphView);
             m_GraphView.nodeCreationRequest = (c) =>
                 {
                     m_SearchWindowProvider.connectedPort = null;
-                    SearcherWindow.Show(editorWindow, (m_SearchWindowProvider as SearcherProvider).LoadSearchWindow(),
-                        item => (m_SearchWindowProvider as SearcherProvider).OnSearcherSelectEntry(item, c.screenMousePosition - editorWindow.position.position),
-                        c.screenMousePosition - editorWindow.position.position, null);
+                    SearchWindow.Open(new SearchWindowContext(c.screenMousePosition), m_SearchWindowProvider);
                 };
 
-            m_EdgeConnectorListener = new EdgeConnectorListener(m_Graph, m_SearchWindowProvider, editorWindow);
+            m_EdgeConnectorListener = new EdgeConnectorListener(m_Graph, m_SearchWindowProvider);
 
             foreach (var graphGroup in graph.groups)
             {
@@ -281,19 +293,6 @@ namespace UnityEditor.ShaderGraph.Drawing
                 AddEdge(edge);
 
             Add(content);
-        }
-
-        void UpdateSubWindowsVisibility()
-        {
-            if (m_UserViewSettings.isBlackboardVisible)
-                m_GraphView.Insert(m_GraphView.childCount, m_BlackboardProvider.blackboard);
-            else
-                m_BlackboardProvider.blackboard.RemoveFromHierarchy();
-
-            if (m_UserViewSettings.isPreviewVisible)
-                m_GraphView.Insert(m_GraphView.childCount, m_MasterPreviewView);
-            else
-                m_MasterPreviewView.RemoveFromHierarchy();
         }
 
         Action<Group, string> m_GraphViewGroupTitleChanged;
@@ -324,6 +323,7 @@ namespace UnityEditor.ShaderGraph.Drawing
 
             masterPreviewViewDraggable.OnDragFinished += UpdateSerializedWindowLayout;
             m_MasterPreviewView.previewResizeBorderFrame.OnResizeFinished += UpdateSerializedWindowLayout;
+            m_MasterPreviewView.visible = m_UserViewSettings.isPreviewVisible;
         }
 
         void OnKeyDown(KeyDownEvent evt)
@@ -1043,11 +1043,8 @@ namespace UnityEditor.ShaderGraph.Drawing
                 saveAsRequested = null;
                 convertToSubgraphRequested = null;
                 showInProjectRequested = null;
-                isCheckedOut = null;
-                checkOut = null;
                 foreach (var node in m_GraphView.Children().OfType<IShaderNodeView>())
                     node.Dispose();
-                m_GraphView.nodeCreationRequest = null;
                 m_GraphView = null;
             }
             if (previewManager != null)

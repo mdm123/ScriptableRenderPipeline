@@ -13,27 +13,13 @@ namespace UnityEditor.VFX
         [SerializeField, FormerlySerializedAs("shader")]
         private Shader m_Shader;
 
-        [SerializeField]
-        private string m_ShaderName;
-
         public Shader shader
         {
-            get {
-                //This is needed for standard shaders ( for instance Unlit/Color ) that are not deserialized correctly during first import.
-                if (m_Shader == null && !object.ReferenceEquals(m_Shader,null) && !string.IsNullOrEmpty(m_ShaderName))
-                {
-                    Shader newShader = Shader.Find(m_ShaderName);
-                    if (newShader != null)
-                        m_Shader = newShader;
-                }
-                return m_Shader;
-            }
+            get { return m_Shader; }
             set
             {
                 m_Shader = value;
                 DestroyCachedMaterial();
-                if( m_Shader != null)
-                    m_ShaderName = m_Shader.name;
             }
         }
 
@@ -44,17 +30,7 @@ namespace UnityEditor.VFX
         public override void OnEnable()
         {
             base.OnEnable();
-
-            if (object.ReferenceEquals(shader,null)) shader = VFXResources.defaultResources.shader;
-
-            if( m_Shader != null)
-            {
-                if(m_ShaderName != m_Shader.name )
-                {
-                    m_ShaderName = m_Shader.name;
-                    EditorUtility.SetDirty(this);
-                }
-            }
+            if (shader == null) shader = VFXResources.defaultResources.shader;
         }
 
         public void RefreshShader()
@@ -111,8 +87,7 @@ namespace UnityEditor.VFX
             Dictionary<VFXContext, VFXContextCompiledData> contextToCompiledData,
             Dictionary<VFXContext, int> contextSpawnToBufferIndex,
             VFXDependentBuffersData dependentBuffers,
-            Dictionary<VFXContext, List<VFXContextLink>[]> effectiveFlowInputLinks,
-            VFXSystemNames systemNames = null)
+            Dictionary<VFXContext, List<VFXContextLink>[]> effectiveFlowInputLinks)
         {
             var context = m_Owners[0];
             var contextData = contextToCompiledData[context];

@@ -10,17 +10,9 @@ TEXTURE2D(_CameraOpaqueTexture); SAMPLER(sampler_CameraOpaqueTexture);
 
 // Pre-multiplied alpha helper
 #if defined(_ALPHAPREMULTIPLY_ON)
-    #define ALBEDO_MUL albedo
+#define ALBEDO_MUL albedo
 #else
-    #define ALBEDO_MUL albedo.a
-#endif
-
-#if defined(_ALPHAPREMULTIPLY_ON)
-    #define SOFT_PARTICLE_MUL_ALBEDO(albedo, val) albedo * val
-#elif defined(_ALPHAMODULATE_ON)
-    #define SOFT_PARTICLE_MUL_ALBEDO(albedo, val) half4(lerp(half3(1.0h, 1.0h, 1.0h), albedo.rgb, albedo.a * val), albedo.a * val)
-#else
-    #define SOFT_PARTICLE_MUL_ALBEDO(albedo, val) albedo * half4(1.0h, 1.0h, 1.0h, val)
+#define ALBEDO_MUL albedo.a
 #endif
 
 // Color blending fragment function
@@ -71,10 +63,9 @@ half3 AlphaModulate(half3 albedo, half alpha)
 {
 #if defined(_ALPHAMODULATE_ON)
     return lerp(half3(1.0h, 1.0h, 1.0h), albedo, alpha);
-#elif defined(_ALPHAPREMULTIPLY_ON)
+#else
     return albedo * alpha;
 #endif
-    return albedo;
 }
 
 half3 Distortion(float4 baseColor, float3 normal, half strength, half blend, float4 projection)

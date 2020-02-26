@@ -62,7 +62,6 @@ namespace UnityEditor.VFX
         {
             Stretch,
             RepeatPerSegment,
-            Custom,
         }
 
         [VFXSetting(VFXSettingAttribute.VisibleFlags.InInspector), SerializeField, Tooltip("Specifies how the particle geometry is culled. This can be used to hide the front or back facing sides or make the mesh double-sided.")]
@@ -141,18 +140,7 @@ namespace UnityEditor.VFX
 
         protected bool usesFlipbook { get { return supportsUV && (uvMode == UVMode.Flipbook || uvMode == UVMode.FlipbookBlend || uvMode == UVMode.FlipbookMotionBlend); } }
 
-        public virtual bool exposeAlphaThreshold
-        {
-            get
-            {
-                if (useAlphaClipping)
-                    return true;
-                //For Motion & Shadow, allow use a alpha clipping and it shares the same value as color clipping for transparent particles
-                if (!isBlendModeOpaque && (hasMotionVector || hasShadowCasting))
-                    return true;
-                return false;
-            }
-        }
+        public virtual bool exposeAlphaThreshold { get => useAlphaClipping; }
 
         protected virtual IEnumerable<VFXNamedExpression> CollectGPUExpressions(IEnumerable<VFXNamedExpression> slotExpressions)
         {
@@ -284,7 +272,7 @@ namespace UnityEditor.VFX
                 else
                     yield return "IS_TRANSPARENT_PARTICLE";
 
-                if (hasAlphaClipping)
+                if (useAlphaClipping)
                     yield return "USE_ALPHA_TEST";
                 if (hasSoftParticles)
                     yield return "USE_SOFT_PARTICLE";

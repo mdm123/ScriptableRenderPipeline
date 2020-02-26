@@ -14,7 +14,7 @@ namespace UnityEditor.Rendering.HighDefinition
     {
         // For surface option shader graph we only want all unlit features but alpha clip, double sided mode and back then front rendering
         const SurfaceOptionUIBlock.Features   surfaceOptionFeatures = SurfaceOptionUIBlock.Features.Unlit
-            ^ SurfaceOptionUIBlock.Features.AlphaCutoffThreshold
+            ^ SurfaceOptionUIBlock.Features.AlphaCutoff
             ^ SurfaceOptionUIBlock.Features.DoubleSidedNormalMode
             ^ SurfaceOptionUIBlock.Features.BackThenFrontRendering;
 
@@ -24,12 +24,18 @@ namespace UnityEditor.Rendering.HighDefinition
             new ShaderGraphUIBlock(MaterialUIBlock.Expandable.ShaderGraph, ShaderGraphUIBlock.Features.Unlit),
         };
 
-        protected override void OnMaterialGUI(MaterialEditor materialEditor, MaterialProperty[] props)
+        public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] props)
         {
             using (var changed = new EditorGUI.ChangeCheckScope())
             {
                 uiBlocks.OnGUI(materialEditor, props);
-                ApplyKeywordsAndPassesIfNeeded(changed.changed, uiBlocks.materials);
+
+                // Apply material keywords and pass:
+                if (changed.changed)
+                {
+                    foreach (var material in uiBlocks.materials)
+                        SetupMaterialKeywordsAndPassInternal(material);
+                }
             }
         }
 

@@ -10,21 +10,16 @@ Shader "Hidden/HDRP/Sky/PbrSky"
     #pragma only_renderers d3d11 ps4 xboxone vulkan metal switch
 
     #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-    #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightDefinition.cs.hlsl"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Sky/PhysicallyBasedSky/PhysicallyBasedSkyCommon.hlsl"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Sky/SkyUtils.hlsl"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/AtmosphericScattering/AtmosphericScattering.hlsl"
-    #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightLoop/CookieSampling.hlsl"
 
     int _HasGroundAlbedoTexture;    // bool...
     int _HasGroundEmissionTexture;  // bool...
     int _HasSpaceEmissionTexture;   // bool...
     int _RenderSunDisk;             // bool...
-
-    float _GroundEmissionMultiplier;
-    float _SpaceEmissionMultiplier;
 
     // Sky framework does not set up global shader variables (even per-view ones),
     // so they can contain garbage. It's very difficult to not include them, however,
@@ -32,8 +27,6 @@ Shader "Hidden/HDRP/Sky/PbrSky"
     // Just don't use them. Ever.
     float3   _WorldSpaceCameraPos1;
     float4x4 _ViewMatrix1;
-    #undef UNITY_MATRIX_V
-    #define UNITY_MATRIX_V _ViewMatrix1
 
     // 3x3, but Unity can only set 4x4...
     float4x4 _PlanetRotation;
@@ -70,14 +63,13 @@ Shader "Hidden/HDRP/Sky/PbrSky"
 
         // TODO: Not sure it's possible to precompute cam rel pos since variables
         // in the two constant buffers may be set at a different frequency?
-        const float3 O = _WorldSpaceCameraPos1 - _PlanetCenterPosition;
+        const float3 O = _WorldSpaceCameraPos1 * 0.001 - _PlanetCenterPosition; // Convert m to km
         const float3 V = GetSkyViewDirWS(input.positionCS.xy);
 
         bool renderSunDisk = _RenderSunDisk != 0;
 
         float3 N; float r; // These params correspond to the entry point
         float tEntry = IntersectAtmosphere(O, V, N, r).x;
-        float tExit  = IntersectAtmosphere(O, V, N, r).y;
 
         float NdotV  = dot(N, V);
         float cosChi = -NdotV;
@@ -100,56 +92,20 @@ Shader "Hidden/HDRP/Sky/PbrSky"
                 // Use scalar or integer cores (more efficient).
                 bool interactsWithSky = asint(light.distanceFromCamera) >= 0;
 
-                // Celestial body must be outside the atmosphere (request from Pierre D).
-                float lightDist = max(light.distanceFromCamera, tExit);
-
-                if (interactsWithSky && asint(light.angularDiameter) != 0 && lightDist < tFrag)
+                if (interactsWithSky && asint(light.angularDiameter) != 0 && light.distanceFromCamera <= tFrag)
                 {
                     // We may be able to see the celestial body.
                     float3 L = -light.forward.xyz;
 
-                    float LdotV    = -dot(L, V);
-                    float rad      = acos(LdotV);
-                    float radInner = 0.5 * light.angularDiameter;
-                    float cosInner = cos(radInner);
-                    float cosOuter = cos(radInner + light.flareSize);
-
-                    // float solidAngle = TWO_PI * (1 - cosInner);
-                    float solidAngle = 1; // Don't scale...
-
-                    if (LdotV >= cosOuter)
+                    if (dot(L, -V) >= cos(0.5 * light.angularDiameter))
                     {
-                        // Sun flare is visible. Sun disk may or may not be visible.
+                        // It's visible.
+                        tFrag = light.distanceFromCamera;
+
+                        float solidAngle = TWO_PI * (1 - cos(light.angularDiameter));
+
                         // Assume uniform emission.
-                        float3 color = light.color.rgb;
-                        float  scale = rcp(solidAngle);
-
-                        if (LdotV >= cosInner) // Sun disk.
-                        {
-                            tFrag = lightDist;
-
-                            if (light.surfaceTextureScaleOffset.x > 0)
-                            {
-                                // The cookie code de-normalizes the axes.
-                                float2 proj   = float2(dot(-V, normalize(light.right)), dot(-V, normalize(light.up)));
-                                float2 angles = HALF_PI - acos(proj);
-                                float2 uv     = angles * rcp(radInner) * 0.5 + 0.5;
-
-                                color *= SampleCookie2D(uv, light.surfaceTextureScaleOffset);
-                                // color *= SAMPLE_TEXTURE2D_ARRAY(_CookieTextures, s_linear_clamp_sampler, uv, light.surfaceTextureIndex).rgb;
-                                color *= light.surfaceTint;
-                            }
-                        }
-                        else // Flare region.
-                        {
-                            float r = max(0, rad - radInner);
-                            float w = saturate(1 - r * rcp(light.flareSize));
-
-                            color *= light.flareTint;
-                            scale *= pow(w, light.flareFalloff);
-                        }
-
-                        radiance += color * scale;
+                        radiance = light.color.rgb * rcp(solidAngle);
                     }
                 }
             }
@@ -172,15 +128,18 @@ Shader "Hidden/HDRP/Sky/PbrSky"
 
                 if (_HasGroundEmissionTexture)
                 {
-                    float4 ts = SAMPLE_TEXTURECUBE(_GroundEmissionTexture, s_trilinear_clamp_sampler, mul(gN, (float3x3)_PlanetRotation));
-                    radiance += _GroundEmissionMultiplier * ts.rgb;
+                    radiance += SAMPLE_TEXTURECUBE(_GroundEmissionTexture, s_trilinear_clamp_sampler, mul(gN, (float3x3)_PlanetRotation)).rgb;
                 }
 
-                float3 albedo = _GroundAlbedo;
+                float3 albedo;
 
                 if (_HasGroundAlbedoTexture)
                 {
-                    albedo *= SAMPLE_TEXTURECUBE(_GroundAlbedoTexture, s_trilinear_clamp_sampler, mul(gN, (float3x3)_PlanetRotation)).rgb;
+                    albedo = SAMPLE_TEXTURECUBE(_GroundAlbedoTexture, s_trilinear_clamp_sampler, mul(gN, (float3x3)_PlanetRotation)).rgb;
+                }
+                else
+                {
+                    albedo = _GroundAlbedo;
                 }
 
                 float3 gBrdf = INV_PI * albedo;
@@ -206,8 +165,7 @@ Shader "Hidden/HDRP/Sky/PbrSky"
             if (_HasSpaceEmissionTexture)
             {
                 // V points towards the camera.
-                float4 ts = SAMPLE_TEXTURECUBE(_SpaceEmissionTexture, s_trilinear_clamp_sampler, mul(-V, (float3x3)_SpaceRotation));
-                radiance += _SpaceEmissionMultiplier * ts.rgb;
+                radiance += SAMPLE_TEXTURECUBE(_SpaceEmissionTexture, s_trilinear_clamp_sampler, mul(-V, (float3x3)_SpaceRotation)).rgb;
             }
         }
 
@@ -215,7 +173,7 @@ Shader "Hidden/HDRP/Sky/PbrSky"
 
         if (rayIntersectsAtmosphere)
         {
-            float distAlongRay = tFrag;
+            float distAlongRay = tFrag * 1000; // Convert km to m
             EvaluatePbrAtmosphere(_WorldSpaceCameraPos1, V, distAlongRay, renderSunDisk, skyColor, skyOpacity);
         }
 

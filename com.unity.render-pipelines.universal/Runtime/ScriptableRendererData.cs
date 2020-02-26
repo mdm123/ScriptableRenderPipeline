@@ -27,15 +27,6 @@ namespace UnityEngine.Rendering.Universal
             get => m_RendererFeatures;
         }
 
-        /// <summary>
-        /// Use SetDirty when changing seeings in the ScriptableRendererData.
-        /// It will rebuild the render passes with the new data.
-        /// </summary>
-        public new void SetDirty()
-        {
-            isInvalidated = true;
-        }
-
         internal ScriptableRenderer InternalCreateRenderer()
         {
             isInvalidated = false;
@@ -44,12 +35,12 @@ namespace UnityEngine.Rendering.Universal
 
         protected virtual void OnValidate()
         {
-            SetDirty();
+            isInvalidated = true;
         }
 
         protected virtual void OnEnable()
         {
-            SetDirty();
+            isInvalidated = true;
         }
 
 #if UNITY_EDITOR
