@@ -12,7 +12,7 @@ namespace UnityEngine.Rendering.Universal
     {
         [SerializeField, HideInInspector] private bool m_Active = true;
         /// <summary>
-        /// This returns the active state of this ScriptableRenderFeature, which is set using ScriptableRenderFeature.SetActive.
+        /// Returns the state of the ScriptableRenderFeature (true: the feature is active, false: the feature is inactive). Use the method ScriptableRenderFeature.SetActive to change the value of this variable.
         /// </summary>
         public bool isActive => m_Active;
 
@@ -40,10 +40,10 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// Activates/Deactivates the ScriptableRenderFeature, depending on the given true or false value.
-        /// While active this feature will be added to the renderer it is attached to, and will be skipped when inactive.
+        /// Sets the state of ScriptableRenderFeature (true: the feature is active, false: the feature is inactive).
+        /// If the feature is active, it is added to the renderer it is attached to, otherwise the feature is skipped while rendering.
         /// </summary>
-        /// <param name="active">Activate or deactivate the ScriptableRenderFeature, where true activates the ScriptableRenderFeature and false deactivates the ScriptableRenderFeature.</param>
+        /// <param name="active">The true value activates the ScriptableRenderFeature and the false value deactivates it.</param>
         public void SetActive(bool active)
         {
             m_Active = active;
